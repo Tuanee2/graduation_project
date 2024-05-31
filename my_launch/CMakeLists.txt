@@ -60,13 +60,18 @@ add_executable(init_pos_pub src/init_pos_pub.cpp)
 add_executable(create_path src/create_path.cpp)
 add_executable(robotController src/robotController.cpp)
 add_executable(work_area_monitor src/work_area_monitor.cpp)
+add_executable(controller_monitor src/controller_monitor.cpp)
+add_executable(main_controller src/main_controller.cpp)
 
 ament_target_dependencies(init_pos_pub rclcpp geometry_msgs)
 ament_target_dependencies(create_path rclcpp geometry_msgs nav_msgs std_msgs)
 ament_target_dependencies(robotController rclcpp geometry_msgs nav_msgs tf2 std_msgs)
+ament_target_dependencies(controller_monitor rclcpp geometry_msgs nav_msgs tf2 std_msgs)
 ament_target_dependencies(work_area_monitor rclcpp geometry_msgs std_msgs)
+ament_target_dependencies(main_controller rclcpp geometry_msgs nav_msgs tf2 std_msgs)
 
-install(TARGETS init_pos_pub create_path robotController work_area_monitor DESTINATION lib/${PROJECT_NAME})
+
+install(TARGETS init_pos_pub create_path robotController work_area_monitor controller_monitor main_controller DESTINATION lib/${PROJECT_NAME})
 
 # Installation of other resources
 install(DIRECTORY launch params map rviz DESTINATION share/${PROJECT_NAME})
