@@ -2,7 +2,7 @@ import os
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, GroupAction, IncludeLaunchDescription
+from launch.actions import DeclareLaunchArgument, GroupAction, IncludeLaunchDescription, TimerAction
 from launch.actions import SetEnvironmentVariable
 from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
@@ -74,7 +74,6 @@ def generate_launch_description():
                 respawn_delay=2.0,
                 arguments=['--ros-args', '--log-level', log_level],
                 parameters=[param_file_dir],
-                
             ),
             Node(
                 package='nav2_lifecycle_manager',
@@ -96,5 +95,17 @@ def generate_launch_description():
     ld.add_action(declare_use_respawn_cmd)
     ld.add_action(declare_log_level_cmd)
     ld.add_action(start_localization)
+
+    initial_pose_publisher = TimerAction(
+        period=10.0,
+        actions=[Node(
+            package='my_launch',
+            executable='init_pos_pub',
+            name='initial_pose_publisher',
+            output='screen'
+        )]
+    )
+
+    ld.add_action(initial_pose_publisher)
 
     return ld

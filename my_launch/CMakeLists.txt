@@ -21,6 +21,7 @@ find_package(rviz_common REQUIRED)
 find_package(rviz_rendering REQUIRED)
 find_package(rviz_default_plugins REQUIRED)
 find_package(OGRE REQUIRED)
+find_package(custom_path REQUIRED)
 
 
 # Enable automatic MOC
@@ -63,10 +64,10 @@ add_executable(work_area_monitor src/work_area_monitor.cpp)
 add_executable(controller_monitor src/controller_monitor.cpp)
 add_executable(main_controller src/main_controller.cpp)
 
-ament_target_dependencies(init_pos_pub rclcpp geometry_msgs)
-ament_target_dependencies(create_path rclcpp geometry_msgs nav_msgs std_msgs)
+ament_target_dependencies(init_pos_pub rclcpp geometry_msgs nav_msgs)
+ament_target_dependencies(create_path rclcpp geometry_msgs nav_msgs std_msgs custom_path)
 ament_target_dependencies(robotController rclcpp geometry_msgs nav_msgs tf2 std_msgs)
-ament_target_dependencies(controller_monitor rclcpp geometry_msgs nav_msgs tf2 std_msgs)
+ament_target_dependencies(controller_monitor rclcpp geometry_msgs nav_msgs tf2 std_msgs custom_path)
 ament_target_dependencies(work_area_monitor rclcpp geometry_msgs std_msgs)
 ament_target_dependencies(main_controller rclcpp geometry_msgs nav_msgs tf2 std_msgs)
 

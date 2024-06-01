@@ -8,6 +8,7 @@
 #include <vector>
 #include <cmath>
 #include <mutex>
+#include "custom_path/msg/custom_path.hpp"
 
 class PathFollower : public rclcpp::Node
 {
@@ -34,7 +35,8 @@ private:
     {
         current_pose_ = msg->pose.pose;
         mutex_.lock();
-        bool condition = (!following_path_ || paused_) ? true : false;
+        bool inside = isPointInPolygon(path_,current_pose_);
+        bool condition = (!following_path_ || paused_ || !inside) ? true : false;
         mutex_.unlock();
         
         if (condition)
@@ -67,15 +69,39 @@ private:
 
     void plan_handle(const nav_msgs::msg::Path::SharedPtr msg)
     {
+        
+        auto feedback_msg = std_msgs::msg::String();
+        mutex_.lock();
         path_ = msg->poses;
+        feedback_msg.data = "please watting for process the path data";
+        feedback_publisher_->publish(feedback_msg);
+        feedback_msg.data = "process complited";
+        feedback_publisher_->publish(feedback_msg);
+        mutex_.unlock();
+        
         current_index_ = 0;  // Reset index
         path_received_ = true;
         following_path_ = false;
         paused_ = false;
 
-        auto feedback_msg = std_msgs::msg::String();
         feedback_msg.data = "Received new plan";
         feedback_publisher_->publish(feedback_msg);
+    }
+
+    bool isPointInPolygon(std::vector<geometry_msgs::msg::PoseStamped>& polygon, const geometry_msgs::msg::Pose& testPoint) {
+        bool result = false;
+        int n = polygon.size();
+        for (int i = 0, j = n - 1; i < n; j = i++) {
+            if (((polygon[i].pose.position.y > testPoint.position.y) != (polygon[j].pose.position.y > testPoint.position.y)) &&
+                (testPoint.position.x < (polygon[j].pose.position.x - polygon[i].pose.position.x) * (testPoint.position.y - polygon[i].pose.position.y) / (polygon[j].pose.position.y - polygon[i].pose.position.y) + polygon[i].pose.position.x)) {
+                result = !result;
+            }
+        }
+        return result;
+    }
+
+    void runAction(){
+        
     }
 
     void cmd_handle(const std_msgs::msg::Int32::SharedPtr msg)

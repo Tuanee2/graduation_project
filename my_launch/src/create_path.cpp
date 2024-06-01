@@ -8,6 +8,7 @@
 #include "nav_msgs/msg/path.hpp"
 #include "std_msgs/msg/int32.hpp"
 #include "std_msgs/msg/string.hpp"
+#include "custom_path/msg/custom_path.hpp"
 
 
 class PathPublisher : public rclcpp::Node {
@@ -79,6 +80,7 @@ private:
     rclcpp::Subscription<geometry_msgs::msg::PointStamped>::SharedPtr subscriber_;
     std::mutex mutex_;
     const size_t sizeOfPath = 50;
+    custom_path::msg::CustomPath points;
 };
 
 void userInteractionThread(std::shared_ptr<PathPublisher> node) {
