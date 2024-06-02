@@ -39,9 +39,9 @@ amcl:
     z_short: 0.05
     scan_topic: scan
     qos_overrides:
-      /scan:
+      scan:
         depth: 10
-        reliability: BEST_EFFORT
+        reliability: RELIABLE
 
 amcl_map_client:
   ros__parameters:

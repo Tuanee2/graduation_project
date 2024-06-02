@@ -26,7 +26,7 @@ private:
         initial_pose_msg.header.frame_id = "map";  // or "odom" if you prefer
 
         initial_pose_msg.pose.pose = msg->pose.pose;
-
+        
         // Optionally, you can set the covariance if needed
         for (size_t i = 0; i < 36; ++i)
         {

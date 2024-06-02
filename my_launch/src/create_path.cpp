@@ -53,6 +53,7 @@ public:
                 char feedback[100];
                 snprintf(feedback, sizeof(feedback), "Final path published with %zu points.", path.poses.size());
                 feedback_msg.data = feedback; 
+                path.poses.clear();
             } else {
                 RCLCPP_INFO(this->get_logger(), "No path to send.");
                 feedback_msg.data = "No path to send.";
@@ -83,26 +84,11 @@ private:
     custom_path::msg::CustomPath points;
 };
 
-void userInteractionThread(std::shared_ptr<PathPublisher> node) {
-    std::cout << "Press 's' or 'S' to send the path and terminate" << std::endl;
-    char input;
-    while (std::cin >> input) {
-        if (input == 's' || input == 'S') {
-            node->publishPath();
-            rclcpp::shutdown();
-            break;
-        } else {
-            std::cout << "Invalid command! Please press 'S' or 's' to send the path and terminate" << std::endl;
-        }
-    }
-}
 
 int main(int argc, char **argv) {
     rclcpp::init(argc, argv);
     auto node = std::make_shared<PathPublisher>();
-    std::thread userInputThread(userInteractionThread, node);
     rclcpp::spin(node);
-    userInputThread.join();
     rclcpp::shutdown();
     return 0;
 }

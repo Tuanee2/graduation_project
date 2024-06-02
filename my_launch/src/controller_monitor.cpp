@@ -34,10 +34,11 @@ private:
     void pose_handle(const geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr msg)
     {
         current_pose_ = msg->pose.pose;
-        mutex_.lock();
-        bool inside = isPointInPolygon(path_,current_pose_);
+        
+        //bool inside = isPointInPolygon(path_,current_pose_);
+        bool inside = true;
         bool condition = (!following_path_ || paused_ || !inside) ? true : false;
-        mutex_.unlock();
+        
         
         if (condition)
         {
@@ -49,6 +50,7 @@ private:
         }
         else
         {
+            std::cout<<"run"<<std::endl;
             // Control to follow the path
             if (current_index_ < path_.size())
             {
@@ -85,6 +87,7 @@ private:
         paused_ = false;
 
         feedback_msg.data = "Received new plan";
+        std::cout<<"Received new plan"<<std::endl;
         feedback_publisher_->publish(feedback_msg);
     }
 
@@ -106,7 +109,7 @@ private:
 
     void cmd_handle(const std_msgs::msg::Int32::SharedPtr msg)
     {
-        std::lock_guard<std::mutex> lock(mutex_);
+        std::cout<<"Received the data"<<std::endl;
         if (!path_received_ && msg->data != 6)
         {
             // Ignore commands if no path has been received, unless the command is to clear the path
@@ -119,16 +122,22 @@ private:
         if (msg->data == 2)
         {
             // Start from the first point
+            
             current_index_ = 0;
             following_path_ = true;
             paused_ = false;
+            std::cout<<"start2"<<std::endl;
+            
         }
         else if (msg->data == 3)
         {
             // Start from the nearest point
+           
             current_index_ = find_nearest_index();
             following_path_ = true;
             paused_ = false;
+            std::cout<<"start3"<<std::endl;
+            
         }
         else if (msg->data == 4)
         {
@@ -147,10 +156,12 @@ private:
         else if (msg->data == 6)
         {
             // Clear the path and stop
+           
             path_.clear();
             path_received_ = false;
             following_path_ = false;
             paused_ = false;
+           
             auto twist_msg = geometry_msgs::msg::Twist();
             twist_msg.linear.x = 0.0;
             twist_msg.angular.z = 0.0;
