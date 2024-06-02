@@ -2,14 +2,11 @@ import os
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, GroupAction, IncludeLaunchDescription, TimerAction
-from launch.actions import SetEnvironmentVariable
+from launch.actions import DeclareLaunchArgument, GroupAction, IncludeLaunchDescription, TimerAction, SetEnvironmentVariable
 from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PythonExpression
-from launch_ros.actions import LoadComposableNodes, SetParameter
 from launch_ros.actions import Node
-
 
 def generate_launch_description():
     use_sim_time = LaunchConfiguration('use_sim_time')
@@ -19,9 +16,9 @@ def generate_launch_description():
     log_level = LaunchConfiguration('log_level')
 
     launch_file_dir = get_package_share_directory('my_launch')
-    param_file_dir = os.path.join(launch_file_dir,'params','my_robot.yaml')
+    param_file_dir = os.path.join(launch_file_dir, 'params', 'my_robot.yaml')
 
-    lifecycle_nodes =['map_server','amcl']
+    lifecycle_nodes = ['map_server', 'amcl', 'controller_server', 'planner_server', 'local_costmap', 'global_costmap']
 
     remappings = [('/tf', 'tf'), ('/tf_static', 'tf_static')]
 
@@ -60,8 +57,8 @@ def generate_launch_description():
             Node(
                 package='nav2_map_server',
                 executable='map_server',
-                output = 'screen',
-                respawn = use_respawn,
+                output='screen',
+                respawn=use_respawn,
                 respawn_delay=2.0,
                 arguments=['--ros-args', '--log-level', log_level],
                 parameters=[param_file_dir],
@@ -70,23 +67,55 @@ def generate_launch_description():
                 package='nav2_amcl',
                 executable='amcl',
                 output='screen',
-                respawn = use_respawn,
+                respawn=use_respawn,
                 respawn_delay=2.0,
                 arguments=['--ros-args', '--log-level', log_level],
                 parameters=[param_file_dir],
             ),
             Node(
+                package='nav2_controller',
+                executable='controller_server',
+                output='screen',
+                respawn=use_respawn,
+                respawn_delay=2.0,
+                arguments=['--ros-args', '--log-level', log_level],
+                parameters=[param_file_dir],
+            ),
+            Node(
+                package='nav2_planner',
+                executable='planner_server',
+                output='screen',
+                respawn=use_respawn,
+                respawn_delay=2.0,
+                arguments=['--ros-args', '--log-level', log_level],
+                parameters=[param_file_dir],
+            ),
+            Node(
+                package='nav2_costmap_2d',
+                executable='nav2_costmap_2d',
+                name='local_costmap',
+                output='screen',
+                parameters=[param_file_dir],
+                remappings=remappings
+            ),
+            Node(
+                package='nav2_costmap_2d',
+                executable='nav2_costmap_2d',
+                name='global_costmap',
+                output='screen',
+                parameters=[param_file_dir],
+                remappings=remappings
+            ),
+            Node(
                 package='nav2_lifecycle_manager',
                 executable='lifecycle_manager',
-                name='lifecycle_manager_slam',
+                name='lifecycle_manager_navigation',
                 output='screen',
                 arguments=['--ros-args', '--log-level', log_level],
                 parameters=[{'autostart': autostart}, {'node_names': lifecycle_nodes}],
             )
         ]
     )
-
-
 
     ld = LaunchDescription()
     ld.add_action(declare_use_sim_time_cmd)
