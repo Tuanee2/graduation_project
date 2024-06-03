@@ -22,6 +22,7 @@ find_package(rviz_rendering REQUIRED)
 find_package(rviz_default_plugins REQUIRED)
 find_package(OGRE REQUIRED)
 find_package(custom_path REQUIRED)
+find_package(tf2_ros REQUIRED)
 
 
 # Enable automatic MOC
@@ -63,18 +64,19 @@ add_executable(robotController src/robotController.cpp)
 add_executable(work_area_monitor src/work_area_monitor.cpp)
 add_executable(controller_monitor src/controller_monitor.cpp)
 add_executable(main_controller src/main_controller.cpp)
-add_executable(compare src/compare.cpp)
+add_executable(demo src/demo.cpp)
+
 
 ament_target_dependencies(init_pos_pub rclcpp geometry_msgs nav_msgs)
 ament_target_dependencies(create_path rclcpp geometry_msgs nav_msgs std_msgs custom_path)
 ament_target_dependencies(robotController rclcpp geometry_msgs nav_msgs tf2 std_msgs)
-ament_target_dependencies(controller_monitor rclcpp geometry_msgs nav_msgs tf2 std_msgs custom_path)
+ament_target_dependencies(controller_monitor rclcpp geometry_msgs nav_msgs tf2 tf2_ros std_msgs custom_path)
 ament_target_dependencies(work_area_monitor rclcpp geometry_msgs std_msgs)
 ament_target_dependencies(main_controller rclcpp geometry_msgs nav_msgs tf2 std_msgs)
-ament_target_dependencies(compare rclcpp geometry_msgs nav_msgs tf2)
+ament_target_dependencies(demo rclcpp geometry_msgs nav_msgs tf2 tf2_ros std_msgs)
 
 
-install(TARGETS init_pos_pub create_path robotController work_area_monitor controller_monitor main_controller compare DESTINATION lib/${PROJECT_NAME})
+install(TARGETS init_pos_pub create_path robotController work_area_monitor controller_monitor main_controller demo DESTINATION lib/${PROJECT_NAME})
 
 # Installation of other resources
 install(DIRECTORY launch params map rviz DESTINATION share/${PROJECT_NAME})

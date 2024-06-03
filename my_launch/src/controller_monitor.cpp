@@ -7,6 +7,8 @@
 #include "std_msgs/msg/int32.hpp"
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2/LinearMath/Matrix3x3.h>
+#include <tf2_ros/transform_listener.h>
+#include <tf2_ros/buffer.h>
 #include <vector>
 #include <cmath>
 #include <mutex>
@@ -15,11 +17,11 @@
 class PathFollower : public rclcpp::Node
 {
 public:
-    PathFollower() : Node("path_follower"), current_index_(0), following_path_(false), path_received_(false), paused_(false), rotation_done_(false)
+    PathFollower() : Node("path_follower"), current_index_(0), following_path_(false), path_received_(false), paused_(false), rotation_done_(false), tf_buffer_(get_clock()), tf_listener_(tf_buffer_)
     {
         // Subscriber
-        subscription_amcl_pose_ = this->create_subscription<geometry_msgs::msg::PoseWithCovarianceStamped>(
-            "/amcl_pose", 10, std::bind(&PathFollower::pose_callback, this, std::placeholders::_1));
+        //subscription_amcl_pose_ = this->create_subscription<geometry_msgs::msg::PoseWithCovarianceStamped>(
+        //    "/amcl_pose", 10, std::bind(&PathFollower::pose_callback, this, std::placeholders::_1));
         
         subscription_plan_ = this->create_subscription<nav_msgs::msg::Path>(
             "/plan", 10, std::bind(&PathFollower::plan_handle, this, std::placeholders::_1));
@@ -31,31 +33,50 @@ public:
         cmd_vel_publisher_ = this->create_publisher<geometry_msgs::msg::Twist>("/cmd_vel", 10);
         feedback_publisher_ = this->create_publisher<std_msgs::msg::String>("/feedback", 10);
         timer_ = this->create_wall_timer(
-            std::chrono::milliseconds(200), std::bind(&PathFollower::timer_callback, this));
+            std::chrono::milliseconds(50), std::bind(&PathFollower::timer_callback, this));
     }
 
 private:
-    void pose_callback(const geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr msg)
+    void pose_callback()
     {
-        last_pose_msg_ = msg;
+        geometry_msgs::msg::TransformStamped transform_stamped;
+        try
+        {
+            // Lấy transform từ "map" đến "base_link"
+            transform_stamped = tf_buffer_.lookupTransform("map", "base_link", tf2::TimePointZero);
+
+            current_pose_.position.x = transform_stamped.transform.translation.x;
+            current_pose_.position.y = transform_stamped.transform.translation.y;
+            current_pose_.position.z = transform_stamped.transform.translation.z;
+            current_pose_.orientation = transform_stamped.transform.rotation;
+
+            std::cout << "position : x:" << current_pose_.position.x << std::endl;
+            std::cout << "position : y:" << current_pose_.position.y << std::endl;
+            std::cout << "yaw : " << get_yaw(current_pose_.orientation) << std::endl;
+        }
+        catch (tf2::TransformException &ex)
+        {
+            RCLCPP_WARN(this->get_logger(), "Could not transform: %s", ex.what());
+        }
     }
 
     void timer_callback()
     {
-        if (last_pose_msg_ == nullptr) {
+        // Gọi pose_callback để cập nhật current_pose_
+        pose_callback();
+        
+        // Kiểm tra nếu current_pose_ chưa được cập nhật
+        if (current_pose_.position.x == 0.0 && current_pose_.position.y == 0.0) {
             return;
         }
-        
-        current_pose_ = last_pose_msg_->pose.pose;
         
         //bool inside = isPointInPolygon(path_,current_pose_);
         bool inside = true;
         bool condition = (!following_path_ || paused_ || !inside) ? true : false;
         
-        
         if (condition)
         {
-            // If not following the path or paused, publish zero velocity
+            // Nếu không đang theo dõi đường dẫn hoặc bị tạm dừng, xuất tốc độ bằng 0
             auto twist_msg = geometry_msgs::msg::Twist();
             twist_msg.linear.x = 0.0;
             twist_msg.angular.z = 0.0;
@@ -63,8 +84,8 @@ private:
         }
         else
         {
-            std::cout<<"run"<<std::endl;
-            // Control to follow the path
+            std::cout << "run" << std::endl;
+            // Điều khiển để theo dõi đường dẫn
             if (current_index_ < path_.size())
             {
                 controller(path_[current_index_].pose.position.x, path_[current_index_].pose.position.y);
@@ -82,13 +103,12 @@ private:
 
     void plan_handle(const nav_msgs::msg::Path::SharedPtr msg)
     {
-        
         auto feedback_msg = std_msgs::msg::String();
         mutex_.lock();
         path_ = msg->poses;
-        feedback_msg.data = "please watting for process the path data";
+        feedback_msg.data = "please waiting for process the path data";
         feedback_publisher_->publish(feedback_msg);
-        feedback_msg.data = "process complited";
+        feedback_msg.data = "process completed";
         feedback_publisher_->publish(feedback_msg);
         mutex_.unlock();
         
@@ -98,7 +118,7 @@ private:
         paused_ = false;
 
         feedback_msg.data = "Received new plan";
-        std::cout<<"Received new plan have :"<<path_.size()<<" points"<<std::endl;
+        std::cout << "Received new plan have :" << path_.size() << " points" << std::endl;
         feedback_publisher_->publish(feedback_msg);
     }
 
@@ -114,15 +134,16 @@ private:
         return result;
     }
 
-    void runAction(){
+    void runAction()
+    {
         
     }
 
     void cmd_handle(const std_msgs::msg::Int32::SharedPtr msg)
     {
-        if (!path_received_ && msg->data != 6)
+        if (!path_received_ && msg->data != 4)
         {
-            // Ignore commands if no path has been received, unless the command is to clear the path
+            // Bỏ qua các lệnh nếu chưa nhận được đường dẫn, trừ khi lệnh là để xóa đường dẫn
             auto feedback_msg = std_msgs::msg::String();
             feedback_msg.data = "No path received yet";
             feedback_publisher_->publish(feedback_msg);
@@ -131,47 +152,41 @@ private:
 
         if (msg->data == 2)
         {
-            // Start from the first point
-            
+            // Bắt đầu từ điểm đầu tiên
             current_index_ = 0;
             following_path_ = true;
             paused_ = false;
-            std::cout<<"start2"<<std::endl;
-            
+            std::cout << "start2" << std::endl;
         }
         else if (msg->data == 3)
         {
-            // Start from the nearest point
-           
+            // Bắt đầu từ điểm gần nhất
             current_index_ = find_nearest_index();
             following_path_ = true;
             paused_ = false;
-            std::cout<<"start3"<<std::endl;
-            
+            std::cout << "start3" << std::endl;
         }
-        else if (msg->data == 4)
+        else if (msg->data == 5)
         {
-            // Pause the movement
+            // Tạm dừng chuyển động
             paused_ = true;
             auto twist_msg = geometry_msgs::msg::Twist();
             twist_msg.linear.x = 0.0;
             twist_msg.angular.z = 0.0;
             cmd_vel_publisher_->publish(twist_msg);
         }
-        else if (msg->data == 5)
-        {
-            // Resume the movement
-            paused_ = false;
-        }
         else if (msg->data == 6)
         {
-            // Clear the path and stop
-           
+            // Tiếp tục chuyển động
+            paused_ = false;
+        }
+        else if (msg->data == 4)
+        {
+            // Xóa đường dẫn và dừng lại
             path_.clear();
             path_received_ = false;
             following_path_ = false;
             paused_ = false;
-           
             auto twist_msg = geometry_msgs::msg::Twist();
             twist_msg.linear.x = 0.0;
             twist_msg.angular.z = 0.0;
@@ -202,59 +217,60 @@ private:
     }
 
     void controller(double x_goal, double y_goal)
+{
+    double fixed_linear_vel = 0.2; // m/s, vận tốc tuyến tính cố định
+    double max_angular_vel = 2.84; // rad/s
+
+    double dx = x_goal - current_pose_.position.x;
+    double dy = y_goal - current_pose_.position.y;
+    double distance = std::sqrt(dx * dx + dy * dy);
+    double angle_to_goal = std::atan2(dy, dx);
+    double angle_diff = normalize_angle(angle_to_goal - get_yaw(current_pose_.orientation));
+
+    auto twist_msg = geometry_msgs::msg::Twist();
+
+    // Điều khiển quay
+    if (!rotation_done_)
     {
-        double Kp_lin = 3;  // Linear velocity proportional gain
-        double Kp_ang = 1.0;  // Angular velocity proportional gain
-        double threshold = 0.1;  // Distance threshold to consider goal reached
-        double yaw_threshold = 0.1;  // Angular error threshold
-        //double max_lin_vel = 1.0;  // Maximum linear velocity
-        //double max_ang_vel = 1.0;  // Maximum angular velocity
-
-        double dx = x_goal - current_pose_.position.x;
-        double dy = y_goal - current_pose_.position.y;
-        double distance = std::sqrt(dx * dx + dy * dy);
-        double angle_to_goal = std::atan2(dy, dx);
-        double angle_diff = normalize_angle(angle_to_goal - get_yaw(current_pose_.orientation));
-
-        std::cout << "Distance: " << distance << ", Angle Diff: " << angle_diff << std::endl;
-
-        auto twist_msg = geometry_msgs::msg::Twist();
-
-        // Giai đoạn quay để hướng robot về phía mục tiêu
-        if (!rotation_done_)
+        if (std::abs(angle_diff) > 0.01)
         {
-            if (std::abs(angle_diff) > yaw_threshold)
-            {
-                twist_msg.linear.x = 0.0;
-                twist_msg.angular.z = Kp_ang * angle_diff;
-                //twist_msg.angular.z = std::min(std::max(twist_msg.angular.z, -max_ang_vel), max_ang_vel);
-            }
-            else
-            {
-                rotation_done_ = true;  // Mark rotation as done
-            }
+            twist_msg.angular.z = 1.5 * angle_diff;
+            twist_msg.angular.z = std::min(std::max(twist_msg.angular.z, -1.0), 1.0);
+            twist_msg.linear.x = 0.0; // Đảm bảo vận tốc tuyến tính là 0 khi đang quay
         }
-
-        if (rotation_done_)
+        else
         {
-            if (distance > threshold)
-            {
-                twist_msg.linear.x = Kp_lin * distance;
-                twist_msg.angular.z = Kp_ang * angle_diff;
-
-                // Limit the velocities
-                //twist_msg.linear.x = std::min(twist_msg.linear.x, max_lin_vel);
-                //twist_msg.angular.z = std::min(std::max(twist_msg.angular.z, -max_ang_vel), max_ang_vel);
-            }
-            else
-            {
-                current_index_++;  // Move to the next point
-                rotation_done_ = false;  // Reset for the next goal
-                return;
-            }
+            twist_msg.angular.z = 0.0;
+            rotation_done_ = true; // Đánh dấu hoàn thành quay
         }
-        cmd_vel_publisher_->publish(twist_msg);
     }
+    // Điều khiển di chuyển thẳng
+    else
+    {
+        if (distance > 0.05)
+        {
+            twist_msg.linear.x = fixed_linear_vel; // Vận tốc tuyến tính cố định
+            twist_msg.angular.z = 1.0 * angle_diff;
+            twist_msg.angular.z = std::min(std::max(twist_msg.angular.z, -1.0), 1.0);
+        }
+        else
+        {
+            twist_msg.linear.x = 0.0;
+            twist_msg.angular.z = 0.0;
+            rotation_done_ = false; // Đặt lại trạng thái quay cho mục tiêu tiếp theo
+            current_index_++; // Chuyển đến điểm tiếp theo
+            if (current_index_ >= path_.size()) {
+                following_path_ = false;
+                path_received_ = false;
+                auto feedback_msg = std_msgs::msg::String();
+                feedback_msg.data = "Completed following the path";
+                feedback_publisher_->publish(feedback_msg);
+            }
+        }
+    }
+
+    cmd_vel_publisher_->publish(twist_msg);
+}
 
     double get_yaw(const geometry_msgs::msg::Quaternion &q)
     {
@@ -279,13 +295,15 @@ private:
     rclcpp::TimerBase::SharedPtr timer_;
     std::vector<geometry_msgs::msg::PoseStamped> path_;
     geometry_msgs::msg::Pose current_pose_;
-    geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr last_pose_msg_;
+    //geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr last_pose_msg_;
     size_t current_index_;
     bool following_path_;
     bool path_received_;
     bool paused_;
     bool rotation_done_;
     std::mutex mutex_;
+    tf2_ros::Buffer tf_buffer_;
+    tf2_ros::TransformListener tf_listener_;
 };
 
 int main(int argc, char *argv[])
