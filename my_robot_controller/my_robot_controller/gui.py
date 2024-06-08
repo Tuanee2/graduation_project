@@ -5,6 +5,7 @@ from rclpy.node import Node
 from std_msgs.msg import String, Int32
 from nav_msgs.msg import Odometry
 import math
+import subprocess
 
 class ROS2GUI(Node):
     def __init__(self):
@@ -12,6 +13,7 @@ class ROS2GUI(Node):
         self.subscri_ = self.create_subscription(String, 'feedback', self.sub_callback, 10)
         self.odom_sub_ = self.create_subscription(Odometry, '/odom', self.odom_sub_callback, 10)
         self.publish_ = self.create_publisher(Int32, 'cmdToControl', 10)
+        self.processes = []
         self.param_setup()
         self.gui_setup()
 
@@ -34,6 +36,7 @@ class ROS2GUI(Node):
             "Continue following the path",
             "Quit"
         ]
+        self.process1 = None
 
     def sub_callback(self, msg : String):
         self.feedback_label.config(text=f"Feedback: {msg.data}")
@@ -64,8 +67,8 @@ class ROS2GUI(Node):
         self.root.grid_rowconfigure(4, weight=1, minsize=50)
 
         # Label 1 trở thành nút bấm
-        button1 = tk.Button(self.root, text=self.text_data[0], bg="lightblue", width=25, height=2, command=self.button1_callback)
-        button1.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
+        self.button1 = tk.Button(self.root, text=self.text_data[0], bg="lightblue", width=25, height=2, command=self.button1_callback)
+        self.button1.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
 
         # Label 2 trở thành khung hiển thị tin nhắn từ topic đăng ký
         self.feedback_label = tk.Label(self.root, text="Feedback: Waiting for messages...", width=25, height=2, bg="white", relief="groove", bd=2)
@@ -74,8 +77,11 @@ class ROS2GUI(Node):
         # Label 3 trở thành nút bấm
         self.button2_0 = tk.Button(self.root, text=self.text_data[1], bg="lightblue", width=25, height=2, command=self.button2_0_callback)
         self.button2_0.grid(row=1, column=0, padx=10, pady=10, sticky="nsew")
+        self.button2_0.config(state="disabled")
+
         self.button2_1 = tk.Button(self.root, text=self.text_data[5], bg="lightblue", width=25, height=2, command=self.button2_1_callback)
         self.button2_1.grid(row=1, column=1, padx=10, pady=10, sticky="nsew")
+        self.button2_1.config(state="disabled")
 
         # Thêm label odom_feedback để hiển thị thông tin từ topic odom
         self.odom_feedback = tk.Label(self.root, text="Position: Waiting for odom...", width=25, height=6, bg="white", relief="groove", bd=2)
@@ -83,10 +89,16 @@ class ROS2GUI(Node):
 
         self.button3_0 = tk.Button(self.root, text=self.text_data[3], bg="lightblue", width=25, height=2, command=self.button3_0_callback)
         self.button3_0.grid(row=2, column=0, padx=10, pady=10, sticky="nsew")
+        self.button3_0.config(state="disabled")
+
         self.button3_1 = tk.Button(self.root, text=self.text_data[6], bg="lightblue", width=25, height=2, command=self.button3_1_callback)
         self.button3_1.grid(row=2, column=1, padx=10, pady=10, sticky="nsew")
+        self.button3_1.config(state="disabled")
+
         self.button4_1 = tk.Button(self.root, text=self.text_data[7], bg="lightblue", width=25, height=2, command=self.button4_1_callback)
         self.button4_1.grid(row=3, column=1, padx=10, pady=10, sticky="nsew")
+        self.button4_1.config(state="disabled")
+
         self.button4_0 = tk.Button(self.root, text=self.text_data[9], bg="lightblue", width=25, height=2, command=self.shutdown_gui)
         self.button4_0.grid(row=3, column=0, padx=10, pady=10, sticky="nsew")
 
@@ -95,6 +107,16 @@ class ROS2GUI(Node):
         cmd.data = 1
         self.publish_.publish(cmd)
         print(cmd.data)
+        self.button1.config(bg="gray",state="disabled")
+        self.button2_0.config(state="normal")
+        self.button3_0.config(state="normal")
+        self.launch_command_1 = ["ros2", "launch", "my_launch", "my_localization.launch.py"]
+        self.launch_command_2 = ["ros2", "run", "my_launch", "work_area_monitor"]
+        self.launch_command_3 = ["ros2", "run", "my_launch", "create_path"]
+        self.launch_command_4 = ["ros2", "run", "my_launch", "controller_monitor"]
+        #self.processes.append(subprocess.Popen(self.launch_command_1))
+        self.process1 = subprocess.Popen(self.launch_command_3)
+        self.feedback_label.config(text="Feedback: Brought up successfully")
         
 
     def button2_0_callback(self):
@@ -112,34 +134,26 @@ class ROS2GUI(Node):
 
     def button2_1_callback(self):
         cmd = Int32()
-        if self.cond3 == True:
-            if self.cond1 == True and self.cond2 == True:
-                self.button2_1.config(bg="gray")
-                self.cond1 = False
-                cmd.data = 4
-                self.publish_.publish(cmd)
-            elif self.cond1 == False and self.cond2 == True:
-                self.button2_1.config(bg="lightblue")
-                self.cond1 = True
-                cmd.data = 5
-                self.publish_.publish(cmd)
-
+        cmd.data = 4
+        self.publish_.publish(cmd)
+        self.button3_1.config(state="disabled")
+        self.button2_1.config(bg="gray",state="disabled")
         print(cmd.data)
 
     def button3_0_callback(self):
         cmd = Int32()
         if self.button3_0.cget('text') == self.text_data[3]:
             self.button3_0.config(text=self.text_data[4])
-            self.cond3 = True
             cmd.data = 6
             self.publish_.publish(cmd)
+            self.button2_1.config(state="normal")
+            self.button3_1.config(state="normal")
+            self.button4_1.config(state="normal")
         else:
             self.button3_0.config(text=self.text_data[3])
-            self.cond3 = False
-            self.cond1 = True
-            self.cond2 = True
-            self.button2_1.config(bg="lightblue")
-            self.button3_1.config(bg="lightblue")
+            self.button2_1.config(bg="lightblue",state="disabled")
+            self.button3_1.config(bg="lightblue",state="disabled")
+            self.button4_1.config(state="disabled")
             cmd.data = 7
             self.publish_.publish(cmd)
 
@@ -148,31 +162,23 @@ class ROS2GUI(Node):
 
     def button3_1_callback(self):
         cmd = Int32()
-        if self.cond3 == True:
-            if self.cond2 == True and self.cond1 == True:
-                self.button3_1.config(bg="gray")
-                self.cond2 = False
-                cmd.data = 8
-                self.publish_.publish(cmd)
-            elif self.cond2 == False and self.cond1 == True:
-                self.button3_1.config(bg="lightblue")
-                self.cond2 = True
-                cmd.data = 9
-                self.publish_.publish(cmd)
-
+        cmd.data = 8
+        self.publish_.publish(cmd)
+        self.button2_1.config(state="disabled")
+        self.button3_1.config(bg="gray",state="disabled")
         print(cmd.data)
 
     def button4_1_callback(self):
         cmd = Int32()
-        if self.cond3 == True:
-            if self.button4_1.cget('text') == self.text_data[7]:
-                self.button4_1.config(text=self.text_data[8])
-                cmd.data = 10
-                self.publish_.publish(cmd)
-            else:
-                self.button4_1.config(text=self.text_data[7])
-                cmd.data = 11
-                self.publish_.publish(cmd)
+
+        if self.button4_1.cget('text') == self.text_data[7]:
+            self.button4_1.config(text=self.text_data[8])
+            cmd.data = 10
+            self.publish_.publish(cmd)
+        else:
+            self.button4_1.config(text=self.text_data[7])
+            cmd.data = 11
+            self.publish_.publish(cmd)
     
         print(cmd.data)
 
@@ -184,6 +190,7 @@ class ROS2GUI(Node):
         cmd.data = 12
         self.publish_.publish(cmd)
         print(cmd.data)
+        self.process1.kill()
         rclpy.shutdown()
         self.root.quit()
 
