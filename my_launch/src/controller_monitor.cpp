@@ -196,6 +196,9 @@ private:
             feedback_msg.data = "Cleared the path";
             feedback_publisher_->publish(feedback_msg);
         }
+        else if (msg->data == 12){
+            rclcpp::shutdown();
+        }
     }
 
     int find_nearest_index()

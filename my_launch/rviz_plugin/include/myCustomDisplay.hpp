@@ -14,6 +14,7 @@
 #include <rviz_common/view_manager.hpp>
 #include <rviz_common/frame_manager_iface.hpp>
 #include <geometry_msgs/msg/point_stamped.hpp>
+#include <std_msgs/msg/int32.hpp>
 
 class MyCustomDisplay : public rviz_common::RosTopicDisplay<geometry_msgs::msg::PointStamped>
 {
@@ -21,6 +22,7 @@ Q_OBJECT
 public:
   MyCustomDisplay();
   virtual ~MyCustomDisplay() override;
+  void cmdCallback(const std_msgs::msg::Int32::SharedPtr msg);
 
 protected:
   virtual void onInitialize() override;
@@ -50,6 +52,8 @@ private:
   std::map<Ogre::SceneNode*, Ogre::ManualObject*> points_;
   std::vector<Ogre::ManualObject*> lines_path;
   std::vector<Ogre::ManualObject*> lines_wall;
+  rclcpp::Node::SharedPtr node_;
+  rclcpp::Subscription<std_msgs::msg::Int32>::SharedPtr cmd;
 };
 
 #endif // MY_CUSTOM_DISPLAY_HPP_

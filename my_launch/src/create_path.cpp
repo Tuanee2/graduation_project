@@ -57,8 +57,13 @@ public:
             } else {
                 RCLCPP_INFO(this->get_logger(), "No path to send.");
                 feedback_msg.data = "No path to send.";
-            }
+            } 
             publisher_fb->publish(feedback_msg);
+
+        }
+         if (msg->data == 12) {
+            RCLCPP_INFO(this->get_logger(), "Shutdown command received.");
+            rclcpp::shutdown();
         }
 
     }

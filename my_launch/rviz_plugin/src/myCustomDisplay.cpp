@@ -46,6 +46,9 @@ MyCustomDisplay::~MyCustomDisplay() {
 
 void MyCustomDisplay::onInitialize() {
     RosTopicDisplay::onInitialize();
+    //node_ = std::make_shared<rclcpp::Node>("my_rviz_plugin_node");
+    //cmd = node_->create_subscription<std_msgs::msg::Int32>(
+    //"cmdToControl", 10, std::bind(&MyCustomDisplay::cmdCallback, this, std::placeholders::_1));
 }
 
 void MyCustomDisplay::onEnable() {
@@ -62,6 +65,12 @@ void MyCustomDisplay::subscribe() {
 
 void MyCustomDisplay::unsubscribe() {
     RosTopicDisplay::unsubscribe();
+}
+
+void MyCustomDisplay::cmdCallback(const std_msgs::msg::Int32::SharedPtr msg){
+    if(msg->data == 4){
+
+    }
 }
 
 void MyCustomDisplay::processMessage(const geometry_msgs::msg::PointStamped::ConstSharedPtr msg) {

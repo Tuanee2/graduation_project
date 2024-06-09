@@ -46,7 +46,7 @@ private:
     {
         geometry_msgs::msg::PolygonStamped polygon_msg;
         polygon_msg.header.stamp = this->get_clock()->now();
-        polygon_msg.header.frame_id = "map"; // Thay đổi frame_id phù hợp với bối cảnh của bạn
+        polygon_msg.header.frame_id = "map"; 
         for (auto& point : points_) {
             geometry_msgs::msg::Point32 point32;
             point32.x = point.x;
