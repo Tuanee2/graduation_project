@@ -4,7 +4,7 @@ import tkinter as tk
 from tkinter import ttk
 import rclpy
 from rclpy.node import Node
-from std_msgs.msg import String, Int32
+from std_msgs.msg import String, Int32, Float32
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Twist
 import math
@@ -15,9 +15,11 @@ class ROS2GUI(Node):
         super().__init__('ros2_gui')
         self.subscri_ = self.create_subscription(String, 'feedback', self.sub_callback, 10)
         self.odom_sub_ = self.create_subscription(Odometry, '/odom', self.odom_sub_callback, 10)
+        self.accuracy_sub = self.create_subscription(Float32, '/acc', self.acc_sub_callback, 10)
         self.publish_ = self.create_publisher(Int32, 'cmdToControl', 10)
         self.cmd_vel_pub_ = self.create_publisher(Twist, '/cmd_vel', 10)
-        self.processes = []
+        self.linear_x = 0
+        self.angular_z = 0
         self.param_setup()
         self.gui_setup()
 
@@ -56,7 +58,10 @@ class ROS2GUI(Node):
         cosy_cosp = 1 - 2 * (orientation_q.y * orientation_q.y + orientation_q.z * orientation_q.z)
         theta = math.atan2(siny_cosp, cosy_cosp)
 
-        self.odom_feedback.config(text=f"Position: x={x:.2f}, y={y:.2f}, θ={theta:.2f}")
+        self.odom_feedback.config(text=f"Position:\nx={x:.2f}\ny={y:.2f}\nθ={theta:.2f}")
+
+    def acc_sub_callback(self, msg : Float32):
+        self.accuracy_feedback.config(text=f"Acc : {msg.data:.2f} %")
 
     def gui_setup(self):
         self.root = tk.Tk()
@@ -104,8 +109,8 @@ class ROS2GUI(Node):
         self.backward_button.grid(row=2, column=1)
 
         # Thêm label accuracy_feedback để hiển thị độ chính xác của vị trí ước lượng
-        self.accuracy_feedback = tk.Label(self.root, text="vel.x:....,vel.z:....", width=25, height=2, bg="white", relief="groove", bd=2)
-        self.accuracy_feedback.grid(row=1, column=1, padx=10, pady=10, sticky="nsew")
+        self.cmd_vel_label = tk.Label(self.root, text="vel.x:....\nvel.z:....", width=25, height=2, bg="white", relief="groove", bd=2)
+        self.cmd_vel_label.grid(row=1, column=1, padx=10, pady=10, sticky="nsew")
         self.accuracy_feedback = tk.Label(self.root, text="Accuracy: Calculating...", width=25, height=2, bg="white", relief="groove", bd=2)
         self.accuracy_feedback.grid(row=1, column=2, padx=10, pady=10, sticky="nsew")
 
@@ -221,20 +226,23 @@ class ROS2GUI(Node):
         print(cmd.data)
 
     def move_robot(self, direction):
-        twist = Twist()
         if direction == "forward":
-            twist.linear.x = 0.5
+            self.linear_x = min(self.linear_x + 0.01, 0.22)
         elif direction == "backward":
-            twist.linear.x = -0.5
+            self.linear_x = max(self.linear_x - 0.01, -0.22)
         elif direction == "left":
-            twist.angular.z = 0.5
+            self.angular_z = min(self.angular_z + 0.1, 2.84)
         elif direction == "right":
-            twist.angular.z = -0.5
+            self.angular_z = max(self.angular_z - 0.1, -2.84)
         elif direction == "stop":
-            twist.linear.x = 0.0
-            twist.angular.z = 0.0
+            self.linear_x = 0.0
+            self.angular_z = 0.0
+
+        twist = Twist()
+        twist.linear.x = self.linear_x
+        twist.angular.z = self.angular_z
         self.cmd_vel_pub_.publish(twist)
-        self.feedback_label.config(text=f"Moving {direction}.")
+        self.cmd_vel_label.config(text=f"vel.x: {self.linear_x:.2f}\nvel.z: {self.angular_z:.2f}")
 
     def run(self):
         self.root.mainloop()
