@@ -22,6 +22,7 @@ class ROS2GUI(Node):
         self.angular_z = 0
         self.param_setup()
         self.gui_setup()
+        self.timer = self.create_timer(0.1, self.timer_callback)
 
     def param_setup(self):
         self.cond1 = True
@@ -30,6 +31,7 @@ class ROS2GUI(Node):
         self.cond4 = True
         self.cond5 = True
         self.cond6 = True
+        self.manual_control_enabled = False
         self.text_data = [
             "Bring up",
             "Send the work area",
@@ -94,19 +96,22 @@ class ROS2GUI(Node):
         self.teleop_frame.grid(row=1, column=0, columnspan=3, padx=10, pady=10, sticky="nsew")
 
         self.forward_button = tk.Button(self.teleop_frame, text="↑", command=lambda: self.move_robot("forward"))
-        self.forward_button.grid(row=0, column=1)
+        self.forward_button.grid(row=0, column=3)
 
         self.left_button = tk.Button(self.teleop_frame, text="←", command=lambda: self.move_robot("left"))
-        self.left_button.grid(row=1, column=0)
+        self.left_button.grid(row=1, column=2)
 
         self.stop_button = tk.Button(self.teleop_frame, text="◼", command=lambda: self.move_robot("stop"))
-        self.stop_button.grid(row=1, column=1)
+        self.stop_button.grid(row=1, column=3)
 
         self.right_button = tk.Button(self.teleop_frame, text="→", command=lambda: self.move_robot("right"))
-        self.right_button.grid(row=1, column=2)
+        self.right_button.grid(row=1, column=4)
 
         self.backward_button = tk.Button(self.teleop_frame, text="↓", command=lambda: self.move_robot("backward"))
-        self.backward_button.grid(row=2, column=1)
+        self.backward_button.grid(row=2, column=3)
+
+        self.manual_button = tk.Button(self.teleop_frame, text="Enable Manual Control",bg="lightblue", command=self.manual_button_callback)
+        self.manual_button.grid(row=1,column=0,padx=20)
 
         # Thêm label accuracy_feedback để hiển thị độ chính xác của vị trí ước lượng
         self.cmd_vel_label = tk.Label(self.root, text="vel.x:....\nvel.z:....", width=25, height=2, bg="white", relief="groove", bd=2)
@@ -124,7 +129,7 @@ class ROS2GUI(Node):
         self.button2_1.config(state="disabled")
 
         # Thêm label odom_feedback để hiển thị thông tin từ topic odom
-        self.odom_feedback = tk.Label(self.root, text="Position: Waiting for odom...", width=25, height=6, bg="white", relief="groove", bd=2)
+        self.odom_feedback = tk.Label(self.root, text="Position: Waiting for messages...", width=25, height=6, bg="white", relief="groove", bd=2)
         self.odom_feedback.grid(row=2, column=2, rowspan=3, padx=10, pady=10, sticky="nsew")
 
         self.button3_0 = tk.Button(self.root, text=self.text_data[3], bg="lightblue", width=25, height=2, command=self.button3_0_callback)
@@ -155,7 +160,7 @@ class ROS2GUI(Node):
         self.launch_command_3 = ["ros2", "run", "my_launch", "create_path"]
         self.launch_command_4 = ["ros2", "run", "my_launch", "controller_monitor"]
         #self.processes.append(subprocess.Popen(self.launch_command_1))
-        self.process0 = subprocess.Popen(self.launch_command_1)
+        #self.process0 = subprocess.Popen(self.launch_command_1)
         self.process1 = subprocess.Popen(self.launch_command_3)
         self.process2 = subprocess.Popen(self.launch_command_4)
         
@@ -238,14 +243,35 @@ class ROS2GUI(Node):
             self.linear_x = 0.0
             self.angular_z = 0.0
 
-        twist = Twist()
-        twist.linear.x = self.linear_x
-        twist.angular.z = self.angular_z
-        self.cmd_vel_pub_.publish(twist)
         self.cmd_vel_label.config(text=f"vel.x: {self.linear_x:.2f}\nvel.z: {self.angular_z:.2f}")
 
+    def manual_button_callback(self):
+        if self.manual_button.cget('text') == "Enable Manual Control":
+            self.manual_control_enabled = True
+            self.manual_button.config(text="Disable Manual Control")
+        else:
+            self.manual_control_enabled = False
+            self.linear_x = 0.0
+            self.angular_z = 0.0
+            self.cmd_vel_label.config(text=f"vel.x: {self.linear_x:.2f}\nvel.z: {self.angular_z:.2f}")
+            self.manual_button.config(text="Enable Manual Control")
+
+    def timer_callback(self):
+        if self.manual_control_enabled:
+            twist = Twist()
+            twist.linear.x = float(self.linear_x)
+            twist.angular.z = float(self.angular_z)
+            self.cmd_vel_pub_.publish(twist)
+    
+
+    def ros_spin(self):
+        rclpy.spin_once(self, timeout_sec=0.1)
+        self.root.after(10, self.ros_spin)
+
     def run(self):
+        self.root.after(10, self.ros_spin)
         self.root.mainloop()
+
 
     def shutdown_gui(self):
         cmd = Int32()
