@@ -1,6 +1,7 @@
 #include <rclcpp/rclcpp.hpp>
 #include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
 #include <std_msgs/msg/float32.hpp>
+#include <std_msgs/msg/int32.hpp>
 
 using std::placeholders::_1;
 
@@ -11,6 +12,9 @@ public:
   {
     amcl_pose_sub_ = this->create_subscription<geometry_msgs::msg::PoseWithCovarianceStamped>(
       "/amcl_pose", 10, std::bind(&KidnapDetector::pose_callback, this, _1));
+
+    subscription_cmd_ = this->create_subscription<std_msgs::msg::Int32>(
+      "/cmdToControl", 10, std::bind(&KidnapDetector::cmd_callback, this, std::placeholders::_1));
     
     accuracy_pub_ = this->create_publisher<std_msgs::msg::Float32>("/acc", 10);
 
@@ -86,8 +90,14 @@ private:
       last_kidnap_warn_time_ = this->now();
     }
   }
+  void cmd_callback(const std_msgs::msg::Int32::SharedPtr msg){
+    if(msg->data = 9){
+      rclcpp::shutdown();
+    }
+  }
 
   rclcpp::Subscription<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr amcl_pose_sub_;
+  rclcpp::Subscription<std_msgs::msg::Int32>::SharedPtr subscription_cmd_;
   rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr accuracy_pub_;
   rclcpp::TimerBase::SharedPtr timer_;
   bool kidnapped_;

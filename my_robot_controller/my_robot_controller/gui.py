@@ -47,6 +47,7 @@ class ROS2GUI(Node):
         self.process0 = None
         self.process1 = None
         self.process2 = None
+        self.process3 = None
 
     def sub_callback(self, msg : String):
         self.feedback_label.config(text=f"Feedback: {msg.data}")
@@ -159,11 +160,13 @@ class ROS2GUI(Node):
         self.launch_command_2 = ["ros2", "run", "my_launch", "work_area_monitor"]
         self.launch_command_3 = ["ros2", "run", "my_launch", "create_path"]
         self.launch_command_4 = ["ros2", "run", "my_launch", "controller_monitor"]
+        self.launch_command_5 = ["ros2", "run", "my_launch", "kidnap"]
         #self.processes.append(subprocess.Popen(self.launch_command_1))
-        #self.process0 = subprocess.Popen(self.launch_command_1)
-        self.process1 = subprocess.Popen(self.launch_command_3)
-        self.process2 = subprocess.Popen(self.launch_command_4)
-        
+        self.process0 = subprocess.Popen(self.launch_command_1,preexec_fn=os.setsid)
+        self.process1 = subprocess.Popen(self.launch_command_2)
+        self.process2 = subprocess.Popen(self.launch_command_3)
+        self.process3 = subprocess.Popen(self.launch_command_4)
+        self.process4 = subprocess.Popen(self.launch_command_5)
         self.feedback_label.config(text="Feedback: Brought up successfully")
         
 
@@ -278,7 +281,7 @@ class ROS2GUI(Node):
         cmd.data = 9
         self.publish_.publish(cmd)
         print(cmd.data)
-        #os.kill(self.process2.pid,15)
+        os.killpg(self.process0.pid,signal.SIGTERM)
         rclpy.shutdown()
         self.root.quit()
 

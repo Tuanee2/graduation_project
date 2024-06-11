@@ -61,7 +61,7 @@ public:
             publisher_fb->publish(feedback_msg);
 
         }
-         if (msg->data == 12) {
+        if (msg->data == 9) {
             RCLCPP_INFO(this->get_logger(), "Shutdown command received.");
             rclcpp::shutdown();
         }

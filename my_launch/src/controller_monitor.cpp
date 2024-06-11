@@ -141,7 +141,7 @@ private:
 
     void cmd_handle(const std_msgs::msg::Int32::SharedPtr msg)
     {
-        if (!path_received_ && msg->data != 4)
+        if (!path_received_ && msg->data != 9)
         {
             // Bỏ qua các lệnh nếu chưa nhận được đường dẫn, trừ khi lệnh là để xóa đường dẫn
             auto feedback_msg = std_msgs::msg::String();
@@ -150,7 +150,7 @@ private:
             return;
         }
 
-        if (msg->data == 2)
+        if (msg->data == 5)
         {
             // Bắt đầu từ điểm đầu tiên
             current_index_ = 0;
@@ -158,7 +158,7 @@ private:
             paused_ = false;
             std::cout << "start2" << std::endl;
         }
-        else if (msg->data == 3)
+        else if (msg->data == 6)
         {
             // Bắt đầu từ điểm gần nhất
             current_index_ = find_nearest_index();
@@ -166,7 +166,7 @@ private:
             paused_ = false;
             std::cout << "start3" << std::endl;
         }
-        else if (msg->data == 5)
+        else if (msg->data == 7)
         {
             // Tạm dừng chuyển động
             paused_ = true;
@@ -175,12 +175,12 @@ private:
             twist_msg.angular.z = 0.0;
             cmd_vel_publisher_->publish(twist_msg);
         }
-        else if (msg->data == 6)
+        else if (msg->data == 8)
         {
             // Tiếp tục chuyển động
             paused_ = false;
         }
-        else if (msg->data == 4)
+        else if (msg->data == 2)
         {
             // Xóa đường dẫn và dừng lại
             path_.clear();
@@ -196,7 +196,7 @@ private:
             feedback_msg.data = "Cleared the path";
             feedback_publisher_->publish(feedback_msg);
         }
-        else if (msg->data == 12){
+        else if (msg->data == 9){
             rclcpp::shutdown();
         }
     }
@@ -253,7 +253,7 @@ private:
         if (distance > 0.05)
         {
             twist_msg.linear.x = fixed_linear_vel; // Vận tốc tuyến tính cố định
-            twist_msg.angular.z = 1.0 * angle_diff;
+            twist_msg.angular.z = -1.0 * angle_diff;
             twist_msg.angular.z = std::min(std::max(twist_msg.angular.z, -1.0), 1.0);
         }
         else

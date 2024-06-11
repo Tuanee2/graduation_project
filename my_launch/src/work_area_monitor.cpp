@@ -3,6 +3,7 @@
 #include "geometry_msgs/msg/polygon_stamped.hpp"
 #include "geometry_msgs/msg/point_stamped.hpp"
 #include "geometry_msgs/msg/pose_with_covariance_stamped.hpp"
+#include "std_msgs/msg/int32.hpp"
 #include <vector>
 
 class WorkAreaMonitor : public rclcpp::Node
@@ -17,6 +18,9 @@ public:
         // Đăng ký để nhận vùng làm việc
         work_area_subscription_ = this->create_subscription<geometry_msgs::msg::PolygonStamped>(
             "work_area", 10, std::bind(&WorkAreaMonitor::work_area_callback, this, std::placeholders::_1));
+
+        cmd_sub_ = this->create_subscription<std_msgs::msg::Int32>(
+            "cmdToControl", 10, std::bind(&WorkAreaMonitor::cmd_callback, this, std::placeholders::_1));
 
         // Publisher để gửi lệnh dừng robot
         cmd_vel_publisher_ = this->create_publisher<geometry_msgs::msg::Twist>("cmd_vel", 10);
@@ -65,8 +69,15 @@ private:
         return inside;
     }
 
+    void cmd_callback(const  std_msgs::msg::Int32::SharedPtr msg){
+        if(msg->data == 9){
+            rclcpp::shutdown();
+        }
+    }
+
     rclcpp::Subscription<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr position_subscription_;
     rclcpp::Subscription<geometry_msgs::msg::PolygonStamped>::SharedPtr work_area_subscription_;
+    rclcpp::Subscription<std_msgs::msg::Int32>::SharedPtr cmd_sub_;
     rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_publisher_;
     geometry_msgs::msg::PointStamped current_position_;
     geometry_msgs::msg::Polygon work_area_;
