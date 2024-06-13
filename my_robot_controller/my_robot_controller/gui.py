@@ -25,7 +25,7 @@ class ROS2GUI(Node):
         self.timer = self.create_timer(0.1, self.timer_callback)
 
     def param_setup(self):
-        self.cond1 = True
+        self.cond1 = False
         self.cond2 = True
         self.cond3 = False
         self.cond4 = True
@@ -48,6 +48,7 @@ class ROS2GUI(Node):
         self.process1 = None
         self.process2 = None
         self.process3 = None
+        self.map_name = ""
 
     def sub_callback(self, msg : String):
         self.feedback_label.config(text=f"Feedback: {msg.data}")
@@ -71,9 +72,9 @@ class ROS2GUI(Node):
         self.root.title("Control Panel")
         self.root.protocol("WM_DELETE_WINDOW", self.shutdown_gui)  # Handle window close
 
-        self.root.grid_columnconfigure(0, weight=1, minsize=150)
-        self.root.grid_columnconfigure(1, weight=1, minsize=150)
-        self.root.grid_columnconfigure(2, weight=1, minsize=150)
+        self.root.grid_columnconfigure(0, weight=1, minsize=200)
+        self.root.grid_columnconfigure(1, weight=1, minsize=200)
+        self.root.grid_columnconfigure(2, weight=1, minsize=200)
         self.root.grid_rowconfigure(0, weight=1, minsize=50)
         self.root.grid_rowconfigure(1, weight=1, minsize=50)
         self.root.grid_rowconfigure(2, weight=1, minsize=50)
@@ -82,19 +83,25 @@ class ROS2GUI(Node):
         self.root.grid_rowconfigure(5, weight=1, minsize=50)
         self.root.grid_rowconfigure(6, weight=1, minsize=50)
 
+        self.map_config_button = tk.Button(self.root, text="Map Config", bg="lightblue", width=25, height=2, command=self.map_config_callback)
+        self.map_config_button.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
+
+        self.map_name_entry = tk.Entry(self.root, width=25)
+        self.map_name_entry.grid(row=0, column=1, padx=10, pady=10, sticky="nsew")
+
         # Label 1 trở thành nút bấm
         self.button1 = tk.Button(self.root, text=self.text_data[0], bg="lightblue", width=25, height=2, command=self.button1_callback)
-        self.button1.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
+        self.button1.grid(row=1, column=0, padx=10, pady=10, sticky="nsew")
 
         # Label 2 trở thành khung hiển thị tin nhắn từ topic đăng ký
         self.feedback_label = tk.Label(self.root, text="Feedback: Waiting for messages...", width=25, height=2, bg="white", relief="groove", bd=2)
-        self.feedback_label.grid(row=0, column=1, columnspan=2, padx=10, pady=10, sticky="nsew")
+        self.feedback_label.grid(row=1, column=1, columnspan=2, padx=10, pady=10, sticky="nsew")
 
         # Thêm phần điều khiển robot
         self.teleop_frame = tk.Frame(self.root)
-        self.teleop_frame.grid(row=1, column=0, padx=10, pady=10, sticky="nsew")
+        self.teleop_frame.grid(row=2, column=0, padx=10, pady=10, sticky="nsew")
 
-        self.teleop_frame.grid(row=1, column=0, columnspan=3, padx=10, pady=10, sticky="nsew")
+        self.teleop_frame.grid(row=2, column=0, columnspan=3, padx=10, pady=10, sticky="nsew")
 
         self.forward_button = tk.Button(self.teleop_frame, text="↑", command=lambda: self.move_robot("forward"))
         self.forward_button.grid(row=0, column=3)
@@ -116,47 +123,60 @@ class ROS2GUI(Node):
 
         # Thêm label accuracy_feedback để hiển thị độ chính xác của vị trí ước lượng
         self.cmd_vel_label = tk.Label(self.root, text="vel.x:....\nvel.z:....", width=25, height=2, bg="white", relief="groove", bd=2)
-        self.cmd_vel_label.grid(row=1, column=1, padx=10, pady=10, sticky="nsew")
+        self.cmd_vel_label.grid(row=2, column=1, padx=10, pady=10, sticky="nsew")
         self.accuracy_feedback = tk.Label(self.root, text="Accuracy: Calculating...", width=25, height=2, bg="white", relief="groove", bd=2)
-        self.accuracy_feedback.grid(row=1, column=2, padx=10, pady=10, sticky="nsew")
+        self.accuracy_feedback.grid(row=2, column=2, padx=10, pady=10, sticky="nsew")
 
         # Label 3 trở thành nút bấm
         self.button2_0 = tk.Button(self.root, text=self.text_data[1], bg="lightblue", width=25, height=2, command=self.button2_0_callback)
-        self.button2_0.grid(row=2, column=0, padx=10, pady=10, sticky="nsew")
+        self.button2_0.grid(row=3, column=0, padx=10, pady=10, sticky="nsew")
         self.button2_0.config(state="disabled")
 
         self.button2_1 = tk.Button(self.root, text=self.text_data[5], bg="lightblue", width=25, height=2, command=self.button2_1_callback)
-        self.button2_1.grid(row=2, column=1, padx=10, pady=10, sticky="nsew")
+        self.button2_1.grid(row=3, column=1, padx=10, pady=10, sticky="nsew")
         self.button2_1.config(state="disabled")
 
         # Thêm label odom_feedback để hiển thị thông tin từ topic odom
         self.odom_feedback = tk.Label(self.root, text="Position: Waiting for messages...", width=25, height=6, bg="white", relief="groove", bd=2)
-        self.odom_feedback.grid(row=2, column=2, rowspan=3, padx=10, pady=10, sticky="nsew")
+        self.odom_feedback.grid(row=3, column=2, rowspan=3, padx=10, pady=10, sticky="nsew")
 
         self.button3_0 = tk.Button(self.root, text=self.text_data[3], bg="lightblue", width=25, height=2, command=self.button3_0_callback)
-        self.button3_0.grid(row=3, column=0, padx=10, pady=10, sticky="nsew")
+        self.button3_0.grid(row=4, column=0, padx=10, pady=10, sticky="nsew")
         self.button3_0.config(state="disabled")
 
         self.button3_1 = tk.Button(self.root, text=self.text_data[6], bg="lightblue", width=25, height=2, command=self.button3_1_callback)
-        self.button3_1.grid(row=3, column=1, padx=10, pady=10, sticky="nsew")
+        self.button3_1.grid(row=4, column=1, padx=10, pady=10, sticky="nsew")
         self.button3_1.config(state="disabled")
 
         self.button4_1 = tk.Button(self.root, text=self.text_data[7], bg="lightblue", width=25, height=2, command=self.button4_1_callback)
-        self.button4_1.grid(row=4, column=1, padx=10, pady=10, sticky="nsew")
+        self.button4_1.grid(row=5, column=1, padx=10, pady=10, sticky="nsew")
         self.button4_1.config(state="disabled")
 
         self.button4_0 = tk.Button(self.root, text=self.text_data[9], bg="lightblue", width=25, height=2, command=self.shutdown_gui)
-        self.button4_0.grid(row=4, column=0, padx=10, pady=10, sticky="nsew")
+        self.button4_0.grid(row=5, column=0, padx=10, pady=10, sticky="nsew")
+
+    def map_config_callback(self):
+        map_name = self.map_name_entry.get()
+        if map_name:
+            self.map_name = map_name
+            self.feedback_label.config(text=f"Map set to: {map_name}")
+            self.map_config_button.config(bg="gray",state="disabled")
+        else:
+            self.feedback_label.config(text="Please enter a valid map name")
 
     def button1_callback(self):
         cmd = Int32()
         cmd.data = 1
         self.publish_.publish(cmd)
         print(cmd.data)
+        self.cond1 = True
         self.button1.config(bg="gray",state="disabled")
         self.button2_0.config(state="normal")
         self.button3_0.config(state="normal")
-        self.launch_command_1 = ["ros2", "launch", "my_launch", "my_localization.launch.py"]
+        home_dir = os.path.expanduser("~")
+        self.launch_command_1 = ["ros2", "launch", "my_launch", "my_localization.launch.py", f"map:={home_dir}/{self.map_name}.yaml"]
+        print(self.launch_command_1)
+        print(f"Running command: {self.launch_command_1}")  # Thêm lệnh in để kiểm tra
         self.launch_command_2 = ["ros2", "run", "my_launch", "work_area_monitor"]
         self.launch_command_3 = ["ros2", "run", "my_launch", "create_path"]
         self.launch_command_4 = ["ros2", "run", "my_launch", "controller_monitor"]
@@ -281,7 +301,8 @@ class ROS2GUI(Node):
         cmd.data = 9
         self.publish_.publish(cmd)
         print(cmd.data)
-        os.killpg(self.process0.pid,signal.SIGTERM)
+        if self.cond1 == True:
+            os.killpg(self.process0.pid,signal.SIGTERM)
         rclpy.shutdown()
         self.root.quit()
 
