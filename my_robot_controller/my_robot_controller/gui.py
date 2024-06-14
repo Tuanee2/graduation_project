@@ -85,14 +85,14 @@ class ROS2GUI(Node):
         self.root.grid_rowconfigure(5, weight=1, minsize=50)
         self.root.grid_rowconfigure(6, weight=1, minsize=50)
 
-        self.map_config_button = tk.Button(self.root, text=self.text_data[1], bg="lightblue", width=25, height=2, command=self.map_config_callback)
+        self.map_config_button = tk.Button(self.root, text=self.text_data[1], bg="lightblue", width=30, height=2, command=self.map_config_callback)
         self.map_config_button.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
 
         self.map_name_entry = tk.Entry(self.root, width=25)
         self.map_name_entry.grid(row=0, column=1, padx=10, pady=10, sticky="nsew")
 
         # Label 1 trở thành nút bấm
-        self.button1 = tk.Button(self.root, text=self.text_data[0], bg="lightblue", width=25, height=2, command=self.button1_callback)
+        self.button1 = tk.Button(self.root, text=self.text_data[0], bg="lightblue", width=30, height=2, command=self.button1_callback)
         self.button1.grid(row=1, column=0, padx=10, pady=10, sticky="nsew")
         self.button1.config(state="disabled")
 
@@ -131,7 +131,7 @@ class ROS2GUI(Node):
         self.accuracy_feedback.grid(row=2, column=2, padx=10, pady=10, sticky="nsew")
 
         # Label 3 trở thành nút bấm
-        self.button2_0 = tk.Button(self.root, text=self.text_data[3], bg="lightblue", width=25, height=2, command=self.button2_0_callback)
+        self.button2_0 = tk.Button(self.root, text=self.text_data[3], bg="lightblue", width=30, height=2, command=self.button2_0_callback)
         self.button2_0.grid(row=3, column=0, padx=10, pady=10, sticky="nsew")
         self.button2_0.config(state="disabled")
 
@@ -143,7 +143,7 @@ class ROS2GUI(Node):
         self.odom_feedback = tk.Label(self.root, text="Position: Waiting for messages...", width=25, height=6, bg="white", relief="groove", bd=2)
         self.odom_feedback.grid(row=3, column=2, rowspan=3, padx=10, pady=10, sticky="nsew")
 
-        self.button3_0 = tk.Button(self.root, text=self.text_data[5], bg="lightblue", width=25, height=2, command=self.button3_0_callback)
+        self.button3_0 = tk.Button(self.root, text=self.text_data[5], bg="lightblue", width=30, height=2, command=self.button3_0_callback)
         self.button3_0.grid(row=4, column=0, padx=10, pady=10, sticky="nsew")
         self.button3_0.config(state="disabled")
 
@@ -155,7 +155,7 @@ class ROS2GUI(Node):
         self.button4_1.grid(row=5, column=1, padx=10, pady=10, sticky="nsew")
         self.button4_1.config(state="disabled")
 
-        self.button4_0 = tk.Button(self.root, text=self.text_data[11], bg="lightblue", width=25, height=2, command=self.shutdown_gui)
+        self.button4_0 = tk.Button(self.root, text=self.text_data[11], bg="lightblue", width=30, height=2, command=self.shutdown_gui)
         self.button4_0.grid(row=5, column=0, padx=10, pady=10, sticky="nsew")
 
     def map_config_callback(self):
