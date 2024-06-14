@@ -10,6 +10,11 @@ from geometry_msgs.msg import Twist
 import math
 import subprocess
 
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+PARENT_DIR = os.path.dirname(CURRENT_DIR)
+MAP_CONFIG_FILE = os.path.join(PARENT_DIR, "map_config.txt")
+MAX_MAP_HISTORY = 5
+
 class ROS2GUI(Node):
     def __init__(self):
         super().__init__('ros2_gui')
@@ -21,6 +26,8 @@ class ROS2GUI(Node):
         self.linear_x = 0
         self.angular_z = 0
         self.param_setup()
+        self.map_history = []  # Initialize map_history before loading it
+        self.load_map_history()
         self.gui_setup()
         self.timer = self.create_timer(0.1, self.timer_callback)
 
@@ -51,6 +58,15 @@ class ROS2GUI(Node):
         self.process2 = None
         self.process3 = None
         self.map_name = ""
+
+    def load_map_history(self):
+        if os.path.exists(MAP_CONFIG_FILE):
+            with open(MAP_CONFIG_FILE, 'r') as f:
+                self.map_history = [line.strip() for line in f.readlines()]
+
+    def save_map_history(self):
+        with open(MAP_CONFIG_FILE, 'w') as f:
+            f.write('\n'.join(self.map_history))
 
     def sub_callback(self, msg : String):
         self.feedback_label.config(text=f"Feedback: {msg.data}")
@@ -90,6 +106,13 @@ class ROS2GUI(Node):
 
         self.map_name_entry = tk.Entry(self.root, width=25)
         self.map_name_entry.grid(row=0, column=1, padx=10, pady=10, sticky="nsew")
+        self.add_placeholder("Enter map name here")
+
+        self.map_history_button = tk.Menubutton(self.root, text="Map History", relief="raised", bg="lightblue",width=25, height=2)
+        self.map_history_button.grid(row=0, column=2, padx=10, pady=10, sticky="nsew")
+        self.map_history_menu = tk.Menu(self.map_history_button, tearoff=0)
+        self.map_history_button.config(menu=self.map_history_menu)
+        self.update_map_history_menu()
 
         # Label 1 trở thành nút bấm
         self.button1 = tk.Button(self.root, text=self.text_data[0], bg="lightblue", width=30, height=2, command=self.button1_callback)
@@ -158,36 +181,69 @@ class ROS2GUI(Node):
         self.button4_0 = tk.Button(self.root, text=self.text_data[11], bg="lightblue", width=30, height=2, command=self.shutdown_gui)
         self.button4_0.grid(row=5, column=0, padx=10, pady=10, sticky="nsew")
 
+    def add_placeholder(self, placeholder_text):
+        self.map_name_entry.insert(0, placeholder_text)
+        self.map_name_entry.config(fg='grey')
+
+        def on_focus_in(event):
+            if self.map_name_entry.get() == placeholder_text:
+                self.map_name_entry.delete(0, tk.END)
+                self.map_name_entry.config(fg='black')
+
+        def on_focus_out(event):
+            if self.map_name_entry.get() == "":
+                self.map_name_entry.insert(0, placeholder_text)
+                self.map_name_entry.config(fg='grey')
+
+        self.map_name_entry.bind("<FocusIn>", on_focus_in)
+        self.map_name_entry.bind("<FocusOut>", on_focus_out)
+
+    def update_map_history_menu(self):
+        self.map_history_menu.delete(0, tk.END)
+        for map_name in self.map_history:
+            self.map_history_menu.add_command(label=map_name,command=lambda name=map_name: self.fill_map_entry(name))
+
+    def fill_map_entry(self, map_name):
+        self.map_name_entry.delete(0, tk.END)
+        self.map_name_entry.config(fg='black')
+        self.map_name_entry.insert(0,map_name)
+
     def map_config_callback(self):
         map_name = self.map_name_entry.get()
-        if map_name:
+        if map_name != "Enter map name here":
             self.map_name = map_name
+            if map_name not in self.map_history:
+                self.map_history.insert(0, map_name)
+                if len(self.map_history) > MAX_MAP_HISTORY:
+                    self.map_history.pop()
+                self.save_map_history()
+                self.update_map_history_menu()
             if self.map_config_button.cget('text') == self.text_data[1]:
                 self.feedback_label.config(text=f"Map set to: {map_name}")
                 self.map_config_button.config(text=self.text_data[2])
                 self.map_name_entry.config(state="disabled")
+                self.map_history_button.config(bg="gray",state="disabled")
                 self.button1.config(state="normal")
             else:
                 if messagebox.askyesno("Warning", "Deleting the map will erase all data and stop all processes. Do you want to proceed?"):
                     self.map_config_button.config(text=self.text_data[1])
                     self.map_name_entry.config(state="normal")
                     self.map_name_entry.delete(0, tk.END)
+                    self.add_placeholder("Enter map name here")
                     self.feedback_label.config(text="Map deleted.")
                     cmd = Int32()
                     cmd.data = 9
                     self.publish_.publish(cmd)
                     print(cmd.data)
                     if self.cond1 == True:
-                        os.killpg(self.process0.pid,signal.SIGTERM)
-                    self.button1.config(bg="lightblue",state="disabled")
-                    self.button2_0.config(text=self.text_data[3],state="disabled")
-                    self.button3_0.config(text=self.text_data[5],state="disabled")
-                    self.button2_1.config(bg="lightblue",state="disabled")
-                    self.button3_1.config(bg="lightblue",state="disabled")
-                    self.button4_1.config(text=self.text_data[9],state="disabled")
-
-                
-
+                        os.killpg(self.process0.pid, signal.SIGTERM)
+                    self.button1.config(bg="lightblue", state="disabled")
+                    self.button2_0.config(text=self.text_data[3], state="disabled")
+                    self.button3_0.config(text=self.text_data[5], state="disabled")
+                    self.button2_1.config(bg="lightblue", state="disabled")
+                    self.button3_1.config(bg="lightblue", state="disabled")
+                    self.button4_1.config(text=self.text_data[9], state="disabled")
+                    self.map_history_button.config(bg="lightblue",state="normal")
         else:
             self.feedback_label.config(text="Please enter a valid map name")
 
