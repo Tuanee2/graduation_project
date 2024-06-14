@@ -77,10 +77,10 @@ private:
         if (condition)
         {
             // Nếu không đang theo dõi đường dẫn hoặc bị tạm dừng, xuất tốc độ bằng 0
-            auto twist_msg = geometry_msgs::msg::Twist();
-            twist_msg.linear.x = 0.0;
-            twist_msg.angular.z = 0.0;
-            cmd_vel_publisher_->publish(twist_msg);
+            //auto twist_msg = geometry_msgs::msg::Twist();
+            //twist_msg.linear.x = 0.0;
+            //twist_msg.angular.z = 0.0;
+            //cmd_vel_publisher_->publish(twist_msg);
         }
         else
         {
@@ -222,7 +222,7 @@ private:
     void controller(double x_goal, double y_goal)
 {
     double fixed_linear_vel = 0.2; // m/s, vận tốc tuyến tính cố định
-    double max_angular_vel = 2.84; // rad/s
+    //double max_angular_vel = 2.84; // rad/s
 
     double dx = x_goal - current_pose_.position.x;
     double dy = y_goal - current_pose_.position.y;
@@ -237,7 +237,7 @@ private:
     {
         if (std::abs(angle_diff) > 0.01)
         {
-            twist_msg.angular.z = 1.5 * angle_diff;
+            twist_msg.angular.z = 0.5 * angle_diff;
             twist_msg.angular.z = std::min(std::max(twist_msg.angular.z, -1.0), 1.0);
             twist_msg.linear.x = 0.0; // Đảm bảo vận tốc tuyến tính là 0 khi đang quay
         }
@@ -250,7 +250,7 @@ private:
     // Điều khiển di chuyển thẳng
     else
     {
-        if (distance > 0.05)
+        if (distance > 0.01)
         {
             twist_msg.linear.x = fixed_linear_vel; // Vận tốc tuyến tính cố định
             twist_msg.angular.z = -1.0 * angle_diff;

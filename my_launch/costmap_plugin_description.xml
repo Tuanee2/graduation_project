@@ -1,6 +1,6 @@
-<library path="costmap_plugin_core">
-  <class name="WorkAreaLayer" 
-         type="WorkAreaLayer" 
+<library path="my_costmap_plugin">
+  <class name="costmap_plugin::CustomCostmapPlugin" 
+         type="costmap_plugin::CustomCostmapPlugin" 
          base_class_type="nav2_costmap_2d::Layer">
     <description>This is a custom costmap plugin.</description>
   </class>

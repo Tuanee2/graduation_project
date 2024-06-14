@@ -69,13 +69,13 @@ private:
       {
         total_accuracy += 100.0;
       }
-      else if (cov > 10.0)
+      else if (cov > 5.0)
       {
         total_accuracy += 0.0;
       }
       else
       {
-        total_accuracy += 100*(cov - 10)/(0.01-10);
+        total_accuracy += 100*(cov - 5)/(0.01-5);
       }
     }
 

@@ -17,7 +17,7 @@ def generate_launch_description():
     namespace = LaunchConfiguration('namespace')
     use_respawn = LaunchConfiguration('use_respawn')
     log_level = LaunchConfiguration('log_level')
-
+    map_yaml_file = LaunchConfiguration('map')
     launch_file_dir = get_package_share_directory('my_launch')
     param_file_dir = os.path.join(launch_file_dir,'params','my_robot.yaml')
 
@@ -64,7 +64,7 @@ def generate_launch_description():
                 respawn = use_respawn,
                 respawn_delay=2.0,
                 arguments=['--ros-args', '--log-level', log_level],
-                parameters=[param_file_dir],
+                parameters=[param_file_dir, {'yaml_filename': map_yaml_file}],
             ),
             Node(
                 package='nav2_amcl',
@@ -75,6 +75,17 @@ def generate_launch_description():
                 arguments=['--ros-args', '--log-level', log_level],
                 parameters=[param_file_dir],
                 
+            ),
+            Node(
+                package='my_launch',
+                executable='my_costmap_node',
+                name='costmap_2d',
+                output='screen',
+                respawn=use_respawn,
+                respawn_delay=2.0,
+                arguments=['--ros-args', '--log-level', log_level],
+                parameters=[param_file_dir],
+                remappings=remappings
             ),
             Node(
                 package='nav2_lifecycle_manager',

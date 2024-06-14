@@ -73,7 +73,7 @@ Visualization Manager:
       Frames:
         All Enabled: false
         base_footprint:
-          Value: true
+          Value: False
         base_link:
           Value: true
         base_scan:
@@ -93,15 +93,15 @@ Visualization Manager:
         caster_back_right_link:
           Value: true
         imu_link:
-          Value: true
+          Value: False
         map:
           Value: true
         odom:
-          Value: true
+          Value: False
         wheel_left_link:
-          Value: true
+          Value: False
         wheel_right_link:
-          Value: true
+          Value: False
       Marker Scale: 1
       Name: TF
       Show Arrows: true
@@ -508,6 +508,11 @@ Visualization Manager:
       Line Type: Straight
       Orientation Type: UpsideDown
       Radius: 1.0
+
+    - Class: costmap_plugin::CustomCostmapPlugin
+      Name: costmap_plugin::CustomCostmapPlugin
+      Enabled: true
+      Topic: /work_area
 
   Enabled: true
   Global Options:
