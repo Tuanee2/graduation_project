@@ -509,11 +509,6 @@ Visualization Manager:
       Orientation Type: UpsideDown
       Radius: 1.0
 
-    - Class: costmap_plugin::CustomCostmapPlugin
-      Name: costmap_plugin::CustomCostmapPlugin
-      Enabled: true
-      Topic: /work_area
-
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
