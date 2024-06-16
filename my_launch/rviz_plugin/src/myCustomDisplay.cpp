@@ -1,17 +1,9 @@
-#include <OgreSceneManager.h>
-#include <OgreSceneNode.h>
-#include <OgreManualObject.h>
-#include <OgreMaterialManager.h>
-#include <OgreTechnique.h>
-#include "myCustomDisplay.hpp"
-#include <vector>
-#include <iostream>
-#include <memory> // For smart pointers
-#include <math.h>
+#include "../include/myCustomDisplay.hpp"
+#include <pluginlib/class_list_macros.hpp>
 
 using namespace rviz_common;
 
-MyCustomDisplay::MyCustomDisplay() :
+MyCustomDisplay::MyCustomDisplay():
     color_property_(new properties::ColorProperty("Color", QColor(255, 0, 0),
                                                   "Color of the point.", this)),
     size_property_(new properties::IntProperty("Size", 10,
@@ -37,47 +29,113 @@ MyCustomDisplay::MyCustomDisplay() :
     line_Orientation_type_property_->addOption("UpRight", 1);
 }
 
-MyCustomDisplay::~MyCustomDisplay() {
-    for (auto& entry : points_) {
-        scene_manager_->destroyManualObject(entry.second);
-        scene_node_->removeAndDestroyChild(entry.first);
-    }
-}
-
-void MyCustomDisplay::onInitialize() {
-    RosTopicDisplay::onInitialize();
-    //node_ = std::make_shared<rclcpp::Node>("my_rviz_plugin_node");
-    //cmd = node_->create_subscription<std_msgs::msg::Int32>(
-    //"cmdToControl", 10, std::bind(&MyCustomDisplay::cmdCallback, this, std::placeholders::_1));
-}
-
-void MyCustomDisplay::onEnable() {
-    subscribe();
-}
-
-void MyCustomDisplay::onDisable() {
+MyCustomDisplay::~MyCustomDisplay()
+{
     unsubscribe();
+    clearPath();
+    clearWall();
 }
 
-void MyCustomDisplay::subscribe() {
-    RosTopicDisplay::subscribe();
+void MyCustomDisplay::onInitialize()
+{
+  rviz_common::Display::onInitialize();
+  auto ros_node_abstraction = context_->getRosNodeAbstraction().lock();
+  if (ros_node_abstraction) {
+    node_ = ros_node_abstraction->get_raw_node();
+  }
 }
 
-void MyCustomDisplay::unsubscribe() {
-    RosTopicDisplay::unsubscribe();
+void MyCustomDisplay::onEnable()
+{
+  subscribe();
 }
 
-void MyCustomDisplay::cmdCallback(const std_msgs::msg::Int32::SharedPtr msg){
-    if(msg->data == 4){
+void MyCustomDisplay::onDisable()
+{
+  unsubscribe();
+}
 
+void MyCustomDisplay::reset()
+{
+  rviz_common::Display::reset();
+  unsubscribe();
+  subscribe();
+}
+
+void MyCustomDisplay::subscribe()
+{
+  if (!node_) {
+    return; // Early return if the node is not initialized
+  }
+  cmd_sub_ = node_->create_subscription<std_msgs::msg::Int32>(
+    "cmdToControl", 10,
+    std::bind(&MyCustomDisplay::cmdCallback, this, std::placeholders::_1));
+  
+  point_sub_ = node_->create_subscription<geometry_msgs::msg::PointStamped>(
+    "clicked_point", 10,
+    std::bind(&MyCustomDisplay::pointCallback, this, std::placeholders::_1));
+}
+
+void MyCustomDisplay::unsubscribe()
+{
+  if (cmd_sub_) {
+    cmd_sub_.reset();
+  }
+  if (point_sub_) {
+    point_sub_.reset();
+  }
+}
+
+void MyCustomDisplay::cmdCallback(const std_msgs::msg::Int32::SharedPtr msg)
+{
+    switch (msg->data) {
+        case 2:
+            if (!point_positions_path.empty()) {
+                clearPath();
+                std::cout << "clear path" << std::endl;
+            }
+            break;
+        case 4:
+            if (!point_positions_wall.empty()) {
+                clearWall();
+                std::cout << "clear wall" << std::endl;
+            }
+            break;
+        default:
+            std::cout << "Received unhandled cmd: " << msg->data << std::endl;
+            break;
     }
 }
 
-void MyCustomDisplay::processMessage(const geometry_msgs::msg::PointStamped::ConstSharedPtr msg) {
-    if (points_.size() >= 100) {
-        std::cerr << "Maximum number of points (100) reached." << std::endl;
-        return;
+void MyCustomDisplay::clearPath(){
+    for (auto& point : points_path_) {
+        scene_manager_->destroyManualObject(point.second);
+        scene_node_->removeAndDestroyChild(point.first);
     }
+
+    point_positions_path.clear();
+
+    for (auto& line : lines_path) {
+        scene_manager_->destroyManualObject(line);
+    }
+    lines_path.clear();
+}
+
+void MyCustomDisplay::clearWall(){
+    for (auto& point : points_wall_) {
+        scene_manager_->destroyManualObject(point.second);
+        scene_node_->removeAndDestroyChild(point.first);
+    }
+    points_wall_.clear();
+
+    for (auto& line : lines_wall) {
+        scene_manager_->destroyManualObject(line);
+    }
+    lines_wall.clear();
+}
+
+void MyCustomDisplay::pointCallback(const geometry_msgs::msg::PointStamped::SharedPtr msg)
+{
     
     if (!msg) {
         std::cerr << "Received invalid message." << std::endl;
@@ -93,12 +151,8 @@ void MyCustomDisplay::processMessage(const geometry_msgs::msg::PointStamped::Con
             createPoint(msg->point,type);
             connectPoints(type);
         }else{
-            if(checkPoint(msg->point) == false){
-                std::cout<<"Wrong pose, please clicked inside the Work Area."<<std::endl;
-            }else{
-                createPoint(msg->point,type);
-                connectPoints(type);
-            }
+            createPoint(msg->point,type);
+            connectPoints(type);
         }
     }else{
         type = "Wall";
@@ -126,7 +180,12 @@ void MyCustomDisplay::createPoint(const geometry_msgs::msg::Point& point, const 
     
     pointObj->setMaterial(0, createOrGetPointMaterial(type));
     node->attachObject(pointObj);
-    points_[node] = pointObj;
+    if(type == "Path"){
+        points_path_[node] = pointObj;
+    }else{
+        points_wall_[node] = pointObj;
+    }
+    
 }
 
 Ogre::MaterialPtr MyCustomDisplay::createOrGetPointMaterial(const std::string& type) {
@@ -169,90 +228,14 @@ void MyCustomDisplay::connectPoints(const std::string& type) {
             line->position(p1);
             line->position(p2);
             
-        } else { // Curved line
-            drawCurvedLine(line, p1, p2);
         }
 
         line->colour(color_property_->getOgreColor());
         line->end();
-        
         line->setMaterial(0, createOrGetLineMaterial(type));
         scene_node_->attachObject(line);
         lines.push_back(line);
     }
-}
-
-void MyCustomDisplay::drawCurvedLine(Ogre::ManualObject* line, const Ogre::Vector3& start, const Ogre::Vector3& end) {
-    Ogre::Real radius = radius_property_->getFloat();
-    Ogre::Real distance = start.distance(end);
-    Ogre::Vector3 mid_point = (start + end) / 2.0f;
-    Ogre::Real real_radius = Ogre::Math::Sqrt(radius * radius + distance * distance/4);
-    Ogre::Radian angle_radian = Ogre::Math::ACos(radius/real_radius);
-    Ogre::Real angle_inc = angle_radian.valueRadians() / 20.0f;
-    // Tính toán tâm của cung tròn
-    Ogre::Vector3 direction = end - start;
-    direction.normalise();
-    Ogre::Vector3 center;
-    if(line_Orientation_type_property_->getOptionInt() == 0 ){
-      center = mid_point + radius * direction.crossProduct(Ogre::Vector3::UNIT_Z);
-    }else{
-      center = mid_point - radius * direction.crossProduct(Ogre::Vector3::UNIT_Z);
-    }
-
-    Ogre::Vector3 vec_from_center_to_start = start - center;
-    Ogre::Vector3 vec_from_center_to_end = end - center;
-    std::cout<<std::endl;
-    std::cout<<"vec_start : "<<vec_from_center_to_start.x <<" : "<<vec_from_center_to_start.y<<std::endl;
-    std::cout<<"vec_end : "<<vec_from_center_to_end.x <<" : "<<vec_from_center_to_end.y<<std::endl;
-    
-    vec_from_center_to_start.normalise();
-    vec_from_center_to_end.normalise();
-
-    // Tính góc giữa hai vectơ và trục x bằng hàm ACos
-    Ogre::Radian angle_start_to_center_x = Ogre::Math::ATan(vec_from_center_to_start.y/vec_from_center_to_start.x);
-    Ogre::Radian angle_end_to_center_x = Ogre::Math::ATan(vec_from_center_to_end.y/vec_from_center_to_end.x);
-    std::cout<<"test"<<std::endl;
-    Ogre::Real angle_start = angle_start_to_center_x.valueRadians();
-    Ogre::Real angle_end = angle_end_to_center_x.valueRadians();
-    std::cout<<"test01"<<std::endl;
-    //**********debug*********
-    std::cout<<start.x <<" : "<<end.x<<std::endl;
-    std::cout<<"Center : "<<center.x <<" : "<<center.y<<std::endl;
-    std::cout<<"vec_start : "<<vec_from_center_to_start.x <<" : "<<vec_from_center_to_start.y<<std::endl;
-    std::cout<<"vec_end : "<<vec_from_center_to_end.x <<" : "<<vec_from_center_to_end.y<<std::endl;
-    std::cout<<angle_start*180/Ogre::Math::PI<<" : "<<angle_end*180/Ogre::Math::PI<<std::endl;
-    //*************************************
-    Ogre::Real angle_swip = 0.0f;
-    if(((angle_end - angle_start) <= Ogre::Math::PI) || ((angle_end - angle_start) >= -Ogre::Math::PI)){
-      if(angle_end - angle_start > 0){
-
-      }else{
-        angle_swip = angle_end;
-        angle_end = angle_start;
-        angle_start = angle_swip;
-      }
-    }else{
-      if(angle_end - angle_start > 0){
-        angle_swip = angle_end;
-        angle_end = angle_start;
-        angle_start = angle_swip;
-      }else{
-
-      }
-    }
-  
-    std::cout<<angle_start*180/Ogre::Math::PI<<" : "<<angle_end*180/Ogre::Math::PI<<std::endl;
-        
-    for (Ogre::Real angle = angle_start; angle <= angle_end ; angle += angle_inc) {
-        Ogre::Real x = center.x + real_radius * Ogre::Math::Cos(angle);
-        Ogre::Real y = center.y + real_radius * Ogre::Math::Sin(angle);
-        Ogre::Real z = center.z;
-        Ogre::Vector3 point(x, y, z);
-          // Thêm điểm vào đường nối
-        line->position(point);
-    }
-    
-
 }
 
 Ogre::MaterialPtr MyCustomDisplay::createOrGetLineMaterial(const std::string& type) {
@@ -274,19 +257,4 @@ Ogre::MaterialPtr MyCustomDisplay::createOrGetLineMaterial(const std::string& ty
     return material;
 }
 
-bool MyCustomDisplay::checkPoint(const geometry_msgs::msg::Point& point){
-
-    int i, j, nvert = point_positions_wall.size();
-        bool inside = false;
-
-        for (i = 0, j = nvert - 1; i < nvert; j = i++) {
-            if (((point_positions_wall[i].y >= point.y) != (point_positions_wall[j].y >= point.y)) &&
-                (point.x <= (point_positions_wall[j].x - point_positions_wall[i].x) * (point.y - point_positions_wall[i].y) / (point_positions_wall[j].y - point_positions_wall[i].y) + point_positions_wall[i].x))
-                inside = !inside;
-        }
-
-        return inside;
-}
-
-#include <pluginlib/class_list_macros.hpp>
 PLUGINLIB_EXPORT_CLASS(MyCustomDisplay, rviz_common::Display)

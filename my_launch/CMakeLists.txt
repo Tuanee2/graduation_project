@@ -32,22 +32,22 @@ set(CMAKE_AUTOMOC ON)
 set(rviz_plugin_sources ${CMAKE_CURRENT_SOURCE_DIR}/rviz_plugin/src/myCustomDisplay.cpp)
 set(rviz_plugin_headers ${CMAKE_CURRENT_SOURCE_DIR}/rviz_plugin/include/myCustomDisplay.hpp)
 
-add_library(my_launch_plugin SHARED ${rviz_plugin_sources})
-ament_target_dependencies(my_launch_plugin rclcpp rviz_common rviz_rendering rviz_default_plugins geometry_msgs)
+add_library(${PROJECT_NAME}_plugin SHARED ${rviz_plugin_sources} ${rviz_plugin_headers})
+ament_target_dependencies(${PROJECT_NAME}_plugin rclcpp rviz_common rviz_rendering rviz_default_plugins geometry_msgs)
 
-target_include_directories(my_launch_plugin PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/rviz_plugin/include)
-target_link_libraries(my_launch_plugin ${OGRE_LIBRARIES} rviz_common::rviz_common)
+target_include_directories(${PROJECT_NAME}_plugin PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/rviz_plugin/include)
+target_link_libraries(${PROJECT_NAME}_plugin ${OGRE_LIBRARIES} rviz_common::rviz_common)
 
 pluginlib_export_plugin_description_file(rviz_common plugin_description.xml)
 
-install(TARGETS my_launch_plugin ARCHIVE DESTINATION lib LIBRARY DESTINATION lib RUNTIME DESTINATION bin)
+install(TARGETS ${PROJECT_NAME}_plugin ARCHIVE DESTINATION lib LIBRARY DESTINATION lib RUNTIME DESTINATION bin)
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/rviz_plugin/include/ DESTINATION include/${PROJECT_NAME})
 
 # Define Costmap plugin
 set(costmap_plugin_sources ${CMAKE_CURRENT_SOURCE_DIR}/costmap_plugin/src/MyCostmapPlugin.cpp)
 set(costmap_plugin_headers ${CMAKE_CURRENT_SOURCE_DIR}/costmap_plugin/include/MyCostmapPlugin.hpp)
 
-add_library(my_costmap_plugin SHARED ${costmap_plugin_sources})
+add_library(my_costmap_plugin SHARED ${costmap_plugin_sources} ${costmap_plugin_headers})
 ament_target_dependencies(my_costmap_plugin rclcpp nav2_costmap_2d geometry_msgs pluginlib)
 
 target_include_directories(my_costmap_plugin PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/costmap_plugin/include)

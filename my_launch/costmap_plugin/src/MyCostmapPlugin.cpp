@@ -19,6 +19,9 @@ namespace costmap_plugin
       polygon_sub_ = node->create_subscription<geometry_msgs::msg::PolygonStamped>(
           "work_area", rclcpp::SystemDefaultsQoS(),
           std::bind(&CustomCostmapPlugin::polygonCallback, this, std::placeholders::_1));
+      command_sub_ = node->create_subscription<std_msgs::msg::Int32>(
+          "/cmdToControl", rclcpp::SystemDefaultsQoS(),
+          std::bind(&CustomCostmapPlugin::commandCallback, this, std::placeholders::_1));
     }
     else
     {
@@ -46,6 +49,32 @@ namespace costmap_plugin
         max_x_ = std::max(max_x_, point.x);
         min_y_ = std::min(min_y_, point.y);
         max_y_ = std::max(max_y_, point.y);
+    }
+  }
+
+  void CustomCostmapPlugin::commandCallback(const std_msgs::msg::Int32::SharedPtr msg)
+  {
+    if (msg->data == 4)
+    {
+      points_.clear();
+      min_x_ = std::numeric_limits<double>::max();
+      min_y_ = std::numeric_limits<double>::max();
+      max_x_ = std::numeric_limits<double>::lowest();
+      max_y_ = std::numeric_limits<double>::lowest();
+
+      // Clear the costmap by setting all cells in this layer to free space (low cost)
+      auto master_grid = layered_costmap_->getCostmap();
+      for (unsigned int i = 0; i < master_grid->getSizeInCellsX(); ++i)
+      {
+        for (unsigned int j = 0; j < master_grid->getSizeInCellsY(); ++j)
+        {
+          unsigned char cost = master_grid->getCost(i, j);
+          if (cost == nav2_costmap_2d::LETHAL_OBSTACLE)
+          {
+            master_grid->setCost(i, j, nav2_costmap_2d::FREE_SPACE);
+          }
+        }
+      }
     }
   }
 

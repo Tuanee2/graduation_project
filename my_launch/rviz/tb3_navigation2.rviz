@@ -579,3 +579,7 @@ Window Geometry:
   Width: 1545
   X: 696
   Y: 229
+
+RenderSystem:
+  RenderAPI: "OpenGL"
+  Shaders: "GLSL 120"

@@ -17,7 +17,7 @@
 class PathFollower : public rclcpp::Node
 {
 public:
-    PathFollower() : Node("path_follower"), current_index_(0), following_path_(false), path_received_(false), paused_(false), rotation_done_(false), tf_buffer_(get_clock()), tf_listener_(tf_buffer_)
+    PathFollower() : Node("path_follower"), current_index_(0), following_path_(false), path_received_(false), paused_(false), rotation_done_(false), loop_(false),tf_buffer_(get_clock()), tf_listener_(tf_buffer_)
     {
         // Subscriber
         //subscription_amcl_pose_ = this->create_subscription<geometry_msgs::msg::PoseWithCovarianceStamped>(
@@ -92,11 +92,16 @@ private:
             }
             else
             {
-                following_path_ = false;
-                path_received_ = false;
-                auto feedback_msg = std_msgs::msg::String();
-                feedback_msg.data = "Completed following the path";
-                feedback_publisher_->publish(feedback_msg);
+                if(loop_ == false){
+                    following_path_ = false;
+                    path_received_ = false;
+                    auto feedback_msg = std_msgs::msg::String();
+                    feedback_msg.data = "Completed following the path";
+                    feedback_publisher_->publish(feedback_msg);
+                }else{
+                    current_index_ = 0;
+                }
+                
             }
         }
     }
@@ -196,6 +201,14 @@ private:
             feedback_msg.data = "Cleared the path";
             feedback_publisher_->publish(feedback_msg);
         }
+        else if (msg->data == 10)
+        {
+            loop_ = true;
+        }
+        else if (msg->data == 11)
+        {
+            loop_ = false;
+        }
         else if (msg->data == 9){
             rclcpp::shutdown();
         }
@@ -221,7 +234,7 @@ private:
 
     void controller(double x_goal, double y_goal)
 {
-    double fixed_linear_vel = 0.2; // m/s, vận tốc tuyến tính cố định
+    double fixed_linear_vel = 0.22; // m/s, vận tốc tuyến tính cố định
     //double max_angular_vel = 2.84; // rad/s
 
     double dx = x_goal - current_pose_.position.x;
@@ -235,9 +248,9 @@ private:
     // Điều khiển quay
     if (!rotation_done_)
     {
-        if (std::abs(angle_diff) > 0.01)
+        if (std::abs(angle_diff) > 0.02)
         {
-            twist_msg.angular.z = 0.5 * angle_diff;
+            twist_msg.angular.z = 0.8 * angle_diff;
             twist_msg.angular.z = std::min(std::max(twist_msg.angular.z, -1.0), 1.0);
             twist_msg.linear.x = 0.0; // Đảm bảo vận tốc tuyến tính là 0 khi đang quay
         }
@@ -252,7 +265,8 @@ private:
     {
         if (distance > 0.01)
         {
-            twist_msg.linear.x = fixed_linear_vel; // Vận tốc tuyến tính cố định
+            //twist_msg.linear.x = fixed_linear_vel; // Vận tốc tuyến tính cố định
+            twist_msg.linear.x = std::max(std::min(distance,fixed_linear_vel),0.05);
             twist_msg.angular.z = -1.0 * angle_diff;
             twist_msg.angular.z = std::min(std::max(twist_msg.angular.z, -1.0), 1.0);
         }
@@ -304,6 +318,7 @@ private:
     bool path_received_;
     bool paused_;
     bool rotation_done_;
+    bool loop_;
     std::mutex mutex_;
     tf2_ros::Buffer tf_buffer_;
     tf2_ros::TransformListener tf_listener_;

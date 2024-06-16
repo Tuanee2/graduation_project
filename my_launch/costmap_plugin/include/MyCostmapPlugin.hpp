@@ -5,6 +5,7 @@
 #include "pluginlib/class_list_macros.hpp"
 #include "geometry_msgs/msg/polygon_stamped.hpp"
 #include "rclcpp/rclcpp.hpp"
+#include "std_msgs/msg/int32.hpp"
 #include <vector>
 
 namespace costmap_plugin
@@ -23,8 +24,10 @@ namespace costmap_plugin
 
   private:
     void polygonCallback(const geometry_msgs::msg::PolygonStamped::SharedPtr msg);
+    void commandCallback(const std_msgs::msg::Int32::SharedPtr msg);
     void updateLineCosts(nav2_costmap_2d::Costmap2D& master_grid, const geometry_msgs::msg::Point& start, const geometry_msgs::msg::Point& end);
     rclcpp::Subscription<geometry_msgs::msg::PolygonStamped>::SharedPtr polygon_sub_;
+    rclcpp::Subscription<std_msgs::msg::Int32>::SharedPtr command_sub_;
     std::vector<geometry_msgs::msg::Point> points_;
     double min_x_;
     double min_y_;

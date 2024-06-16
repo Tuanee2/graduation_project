@@ -9,10 +9,12 @@ from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Twist
 import math
 import subprocess
+import time
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 PARENT_DIR = os.path.dirname(CURRENT_DIR)
 MAP_CONFIG_FILE = os.path.join(PARENT_DIR, "map_config.txt")
+PATH_RESOURCE_FILE = os.path.join(PARENT_DIR, "path_resource.txt")
 MAX_MAP_HISTORY = 5
 
 class ROS2GUI(Node):
@@ -51,6 +53,8 @@ class ROS2GUI(Node):
             "Start from the nearest point",
             "Stop following the path",
             "Continue following the path",
+            "Path loop",
+            "End loop",
             "Quit"
         ]
         self.process0 = None
@@ -178,8 +182,12 @@ class ROS2GUI(Node):
         self.button4_1.grid(row=5, column=1, padx=10, pady=10, sticky="nsew")
         self.button4_1.config(state="disabled")
 
-        self.button4_0 = tk.Button(self.root, text=self.text_data[11], bg="lightblue", width=30, height=2, command=self.shutdown_gui)
+        self.button4_0 = tk.Button(self.root, text=self.text_data[11], bg="lightblue", width=25, height=2, command=self.button4_0_callback)
         self.button4_0.grid(row=5, column=0, padx=10, pady=10, sticky="nsew")
+        self.button4_0.config(state="disabled")
+
+        self.button5_0 = tk.Button(self.root, text=self.text_data[13], bg="lightblue", width=30, height=2, command=self.shutdown_gui)
+        self.button5_0.grid(row=6, column=1, padx=10, pady=10, sticky="nsew")
 
     def add_placeholder(self, placeholder_text):
         self.map_name_entry.insert(0, placeholder_text)
@@ -243,6 +251,7 @@ class ROS2GUI(Node):
                     self.button2_1.config(bg="lightblue", state="disabled")
                     self.button3_1.config(bg="lightblue", state="disabled")
                     self.button4_1.config(text=self.text_data[9], state="disabled")
+                    self.button4_0.config(text=self.text_data[11], state="disabled")
                     self.map_history_button.config(bg="lightblue",state="normal")
         else:
             self.feedback_label.config(text="Please enter a valid map name")
@@ -256,6 +265,7 @@ class ROS2GUI(Node):
         self.button1.config(bg="gray",state="disabled")
         self.button2_0.config(state="normal")
         self.button3_0.config(state="normal")
+        self.button4_0.config(state="normal")
         home_dir = os.path.expanduser("~")
         self.launch_command_1 = ["ros2", "launch", "my_launch", "my_localization.launch.py", f"map:={home_dir}/{self.map_name}.yaml"]
         #self.launch_command_2 = ["ros2", "run", "my_launch", "work_area_monitor"]
@@ -302,14 +312,19 @@ class ROS2GUI(Node):
             self.button3_1.config(state="normal")
             self.button4_1.config(state="normal")
         else:
+            self.feedback_label.config(text="Waitting to delete the path")
+            count = 0
+            while count < 5:
+                cmd.data = 2
+                self.publish_.publish(cmd)
+                time.sleep(0.5)
+                count += 1
+            self.feedback_label.config(text="Delete path successed")
             self.button3_0.config(text=self.text_data[5])
             self.button2_1.config(bg="lightblue",state="disabled")
             self.button3_1.config(bg="lightblue",state="disabled")
             self.button4_1.config(state="disabled")
-            cmd.data = 2
-            self.publish_.publish(cmd)
 
-    
         print(cmd.data)
 
     def button3_1_callback(self):
@@ -319,6 +334,20 @@ class ROS2GUI(Node):
         self.button2_1.config(state="disabled")
         self.button3_1.config(bg="gray",state="disabled")
         print(cmd.data)
+
+    def button4_0_callback(self):
+        cmd = Int32()
+        if self.button4_0.cget('text') == self.text_data[11]:
+            self.button4_0.config(text=self.text_data[12])
+            cmd.data = 10
+            self.publish_.publish(cmd)
+        else:
+            self.button4_0.config(text=self.text_data[11])
+            cmd.data = 11
+            self.publish_.publish(cmd)
+    
+        print(cmd.data)
+
 
     def button4_1_callback(self):
         cmd = Int32()
