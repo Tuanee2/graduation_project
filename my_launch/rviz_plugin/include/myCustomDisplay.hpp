@@ -63,6 +63,7 @@ private:
   std::map<Ogre::SceneNode*, Ogre::ManualObject*> points_wall_;
   std::vector<Ogre::ManualObject*> lines_path;
   std::vector<Ogre::ManualObject*> lines_wall;
+  bool path_loop_;
 };
 
 #endif // MY_CUSTOM_DISPLAY_HPP_

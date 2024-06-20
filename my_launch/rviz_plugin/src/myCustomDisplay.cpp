@@ -1,5 +1,6 @@
 #include "../include/myCustomDisplay.hpp"
 #include <pluginlib/class_list_macros.hpp>
+#include <OgreManualObject.h>
 
 using namespace rviz_common;
 
@@ -17,7 +18,8 @@ MyCustomDisplay::MyCustomDisplay():
     line_Orientation_type_property_(new properties::EnumProperty("Orientation Type", "UpsideDown",
                                                                  "Choose between a UpsideDown type or UpRight type.",this)),
     radius_property_(new properties::FloatProperty("Radius", 1.0,
-                                                   "Radius of the curve (only used if 'Curved' is selected).", this))
+                                                   "Radius of the curve (only used if 'Curved' is selected).", this)),
+    path_loop_(false)
 {
     line_type_property_->addOption("Path",0);
     line_type_property_->addOption("Wall",1);
@@ -101,6 +103,20 @@ void MyCustomDisplay::cmdCallback(const std_msgs::msg::Int32::SharedPtr msg)
                 std::cout << "clear wall" << std::endl;
             }
             break;
+        case 10:
+            if(path_loop_ == false && (!point_positions_path.empty())){
+                point_positions_path.push_back(Ogre::Vector3(point_positions_path.front().x,point_positions_path.front().y,0));
+                connectPoints("Path");
+                path_loop_ = true;
+            }
+            break;
+        case 11:
+            if(path_loop_ == true){
+                point_positions_path.pop_back();
+                connectPoints("Path");
+                path_loop_ = false;
+            }
+            break;
         default:
             std::cout << "Received unhandled cmd: " << msg->data << std::endl;
             break;
@@ -126,7 +142,7 @@ void MyCustomDisplay::clearWall(){
         scene_manager_->destroyManualObject(point.second);
         scene_node_->removeAndDestroyChild(point.first);
     }
-    points_wall_.clear();
+    point_positions_wall.clear();
 
     for (auto& line : lines_wall) {
         scene_manager_->destroyManualObject(line);
@@ -147,13 +163,8 @@ void MyCustomDisplay::pointCallback(const geometry_msgs::msg::PointStamped::Shar
     if(line_type_property_->getOptionInt() == 0){
         type = "Path";
         point_positions_path.push_back(Ogre::Vector3(msg->point.x, msg->point.y, 0));
-        if(workspace_status_property_->getOptionInt() == 0){
-            createPoint(msg->point,type);
-            connectPoints(type);
-        }else{
-            createPoint(msg->point,type);
-            connectPoints(type);
-        }
+        createPoint(msg->point,type);
+        connectPoints(type);
     }else{
         type = "Wall";
 
