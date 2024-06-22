@@ -27,7 +27,8 @@ setup(
             "read_lidar = my_robot_controller.read_lidar:main",
             "controller = my_robot_controller.controller:main",
             "test_GUI = my_robot_controller.test_GUI:main",
-            "gui = my_robot_controller.gui:main"
+            "gui = my_robot_controller.gui:main",
+            "debug = my_robot_controller.debug:main"
         ],
     },
 )
