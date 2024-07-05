@@ -77,17 +77,6 @@ def generate_launch_description():
                 
             ),
             Node(
-                package='my_launch',
-                executable='my_costmap_node',
-                name='costmap_2d',
-                output='screen',
-                respawn=use_respawn,
-                respawn_delay=2.0,
-                arguments=['--ros-args', '--log-level', log_level],
-                parameters=[param_file_dir],
-                remappings=remappings
-            ),
-            Node(
                 package='nav2_lifecycle_manager',
                 executable='lifecycle_manager',
                 name='lifecycle_manager_slam',

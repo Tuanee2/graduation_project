@@ -185,6 +185,10 @@ private:
         else if (msg->data == 10)
         {
             loop_ = true;
+            sleep(2);
+            auto feedback_msg = std_msgs::msg::String();
+            feedback_msg.data = "config loop successful";
+            feedback_publisher_->publish(feedback_msg);
         }
         else if (msg->data == 11)
         {
@@ -239,6 +243,7 @@ private:
             {
                 twist_msg.angular.z = 0.0;
                 rotation_done_ = true; // Đánh dấu hoàn thành quay
+                sleep(2);
             }
         }
         // Điều khiển di chuyển thẳng
@@ -258,7 +263,7 @@ private:
                 twist_msg.angular.z = 0.0;
                 rotation_done_ = false; // Đặt lại trạng thái quay cho mục tiêu tiếp theo
                 current_index_++; // Chuyển đến điểm tiếp theo
-                
+                /*
                 if (current_index_ >= path_.size()) {
                     following_path_ = false;
                     path_received_ = false;
@@ -266,6 +271,7 @@ private:
                     feedback_msg.data = "Completed following the path";
                     feedback_publisher_->publish(feedback_msg);
                 }
+                */
                 
             }
         }
