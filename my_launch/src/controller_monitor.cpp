@@ -5,6 +5,7 @@
 #include "nav_msgs/msg/path.hpp"
 #include "std_msgs/msg/string.hpp"
 #include "std_msgs/msg/int32.hpp"
+#include "std_msgs/msg/float32.hpp"
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2/LinearMath/Matrix3x3.h>
 #include <tf2_ros/transform_listener.h>
@@ -32,6 +33,7 @@ public:
         // Publisher
         cmd_vel_publisher_ = this->create_publisher<geometry_msgs::msg::Twist>("/cmd_vel", 10);
         feedback_publisher_ = this->create_publisher<std_msgs::msg::String>("/feedback", 10);
+        error_publisher_ = this->create_publisher<std_msgs::msg::Float32>("/error", 10);
         timer_ = this->create_wall_timer(
             std::chrono::milliseconds(25), std::bind(&PathFollower::timer_callback, this));
     }
@@ -76,15 +78,19 @@ private:
         }
         else
         {
-            if (current_index_ < path_.size())
+            if (current_index_ < path_.size()-1)
             {
-                controller(path_[current_index_].pose.position.x, path_[current_index_].pose.position.y);
+                controller();
             }
             else
             {
                 if(loop_ == false){
                     following_path_ = false;
                     path_received_ = false;
+                    auto twist_msg = geometry_msgs::msg::Twist();
+                    twist_msg.linear.x = 0;
+                    twist_msg.angular.z = 0;
+                    cmd_vel_publisher_->publish(twist_msg);
                     auto feedback_msg = std_msgs::msg::String();
                     feedback_msg.data = "Completed following the path";
                     feedback_publisher_->publish(feedback_msg);
@@ -185,10 +191,6 @@ private:
         else if (msg->data == 10)
         {
             loop_ = true;
-            sleep(2);
-            auto feedback_msg = std_msgs::msg::String();
-            feedback_msg.data = "config loop successful";
-            feedback_publisher_->publish(feedback_msg);
         }
         else if (msg->data == 11)
         {
@@ -217,65 +219,36 @@ private:
         return nearest_index;
     }
 
-    void controller(double x_goal, double y_goal)
+    void controller()
     {
-        //double fixed_linear_vel = 0.1; // m/s, vận tốc tuyến tính cố định
-        //double max_angular_vel = 2.84; // rad/s
-
-        double dx = x_goal - current_pose_.position.x;
-        double dy = y_goal - current_pose_.position.y;
-        double distance = std::sqrt(dx * dx + dy * dy);
-        double angle_to_goal = std::atan2(dy, dx);
-        double angle_diff = normalize_angle(angle_to_goal - get_yaw(current_pose_.orientation));
-
+        double delta_x = path_[current_index_+1].pose.position.x - path_[current_index_].pose.position.x;
+        double delta_y = path_[current_index_+1].pose.position.y - path_[current_index_].pose.position.y;
+        double d_x = current_pose_.position.x - path_[current_index_].pose.position.x;
+        double d_y = current_pose_.position.y - path_[current_index_].pose.position.y;
+        // H = [delta_x;delta_y] Hn = [-delta_y ; delta_x]; r = [d_x ; d_y];
+        double e_p = (-delta_y*d_x+delta_x*d_y)/(delta_x*delta_x+delta_y*delta_y); // e_p = (Hn'.r)/(Hn'.Hn)
+        double u = (delta_x*d_x+delta_y*d_y)/(delta_x*delta_x+delta_y*delta_y);// u =(H'.r)/(H'.H)
+        auto error_msg = std_msgs::msg::Float32();
+        error_msg.data = (float)e_p;
+        error_publisher_->publish(error_msg);
+        if (u > 1)
+        {
+            current_index_ ++;
+            double delta_x = path_[current_index_+1].pose.position.x - path_[current_index_].pose.position.x;
+            double delta_y = path_[current_index_+1].pose.position.y - path_[current_index_].pose.position.y;
+            double d_x = current_pose_.position.x - path_[current_index_].pose.position.x;
+            double d_y = current_pose_.position.y - path_[current_index_].pose.position.y;
+            
+            double e_p = (-delta_y*d_x+delta_x*d_y)/(delta_x*delta_x+delta_y*delta_y);
+            double u = (delta_x*d_x+delta_y*d_y)/(delta_x*delta_x+delta_y*delta_y); 
+        }
+        double theta_path = atan2(delta_y,delta_x);
+        double theta_ed = -atan2(5*e_p,1);
+        double angle_diff = normalize_angle(normalize_angle(theta_path+theta_ed) - get_yaw(current_pose_.orientation));
+        // Controller
         auto twist_msg = geometry_msgs::msg::Twist();
-
-        // Điều khiển quay
-        if (!rotation_done_)
-        {
-            if (std::abs(angle_diff) > 0.01)
-            {
-                twist_msg.angular.z = 2 * angle_diff;
-                twist_msg.angular.z = std::min(std::max(twist_msg.angular.z, -1.0), 1.0);
-                twist_msg.linear.x = 0.0; // Đảm bảo vận tốc tuyến tính là 0 khi đang quay
-            }
-            else
-            {
-                twist_msg.angular.z = 0.0;
-                rotation_done_ = true; // Đánh dấu hoàn thành quay
-                sleep(2);
-            }
-        }
-        // Điều khiển di chuyển thẳng
-        else
-        {
-            if (distance > 0.05)
-            {
-                //twist_msg.linear.x = fixed_linear_vel; // Vận tốc tuyến tính cố định
-                twist_msg.linear.x = std::min(std::max(distance, 0.01), 0.2);
-                twist_msg.angular.z = 1 * angle_diff;
-                twist_msg.angular.z = std::min(std::max(twist_msg.angular.z, -1.0), 1.0);
-                //twist_msg.angular.z = 0;
-            }
-            else
-            {
-                twist_msg.linear.x = 0.0;
-                twist_msg.angular.z = 0.0;
-                rotation_done_ = false; // Đặt lại trạng thái quay cho mục tiêu tiếp theo
-                current_index_++; // Chuyển đến điểm tiếp theo
-                /*
-                if (current_index_ >= path_.size()) {
-                    following_path_ = false;
-                    path_received_ = false;
-                    auto feedback_msg = std_msgs::msg::String();
-                    feedback_msg.data = "Completed following the path";
-                    feedback_publisher_->publish(feedback_msg);
-                }
-                */
-                
-            }
-        }
-
+        twist_msg.linear.x = 0.1*cos(angle_diff);
+        twist_msg.angular.z = 0.75 * angle_diff;
         cmd_vel_publisher_->publish(twist_msg);
     }
 
@@ -289,7 +262,10 @@ private:
 
     double normalize_angle(double angle)
     {
-        return angle = (angle > M_PI) ? (angle - 2*M_PI) : ((angle < -M_PI) ? (angle + 2*M_PI) : angle);
+        while(angle > M_PI || angle < -M_PI){
+            angle = (angle > M_PI) ? (angle - 2*M_PI) : ((angle < -M_PI) ? (angle + 2*M_PI) : angle);
+        }
+        return angle;
     }
 
     rclcpp::Subscription<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr subscription_amcl_pose_;
@@ -297,6 +273,7 @@ private:
     rclcpp::Subscription<std_msgs::msg::Int32>::SharedPtr subscription_cmd_;
     rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_publisher_;
     rclcpp::Publisher<std_msgs::msg::String>::SharedPtr feedback_publisher_;
+    rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr error_publisher_;
     rclcpp::TimerBase::SharedPtr timer_;
     std::vector<geometry_msgs::msg::PoseStamped> path_;
     geometry_msgs::msg::Pose current_pose_;

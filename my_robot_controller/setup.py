@@ -28,7 +28,8 @@ setup(
             "controller = my_robot_controller.controller:main",
             "test_GUI = my_robot_controller.test_GUI:main",
             "gui = my_robot_controller.gui:main",
-            "debug = my_robot_controller.debug:main"
+            "debug = my_robot_controller.debug:main",
+            "error = my_robot_controller.error:main"
         ],
     },
 )
