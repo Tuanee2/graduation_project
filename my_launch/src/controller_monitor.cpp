@@ -78,13 +78,12 @@ private:
         }
         else
         {
-            if (current_index_ < path_.size()-1)
-            {
-                controller();
-            }
-            else
-            {
-                if(loop_ == false){
+            if(loop_ == false){
+                if (current_index_ < path_.size()-1)
+                {
+                    
+                    controller(path_);
+                }else{
                     following_path_ = false;
                     path_received_ = false;
                     auto twist_msg = geometry_msgs::msg::Twist();
@@ -94,10 +93,13 @@ private:
                     auto feedback_msg = std_msgs::msg::String();
                     feedback_msg.data = "Completed following the path";
                     feedback_publisher_->publish(feedback_msg);
+                }
+            }else{
+                if (current_index_ < path_1.size()){
+                    controller(path_1);
                 }else{
                     current_index_ = 0;
                 }
-                
             }
         }
     }
@@ -191,6 +193,11 @@ private:
         else if (msg->data == 10)
         {
             loop_ = true;
+            for(int j=0;j<15;j++){
+                for(int i=0;i<path_.size();i++){
+                    path_1.push_back(path_[i]);
+                }
+            }
         }
         else if (msg->data == 11)
         {
@@ -219,7 +226,7 @@ private:
         return nearest_index;
     }
 
-    void controller()
+    void controller(std::vector<geometry_msgs::msg::PoseStamped> path_)
     {
         double delta_x = path_[current_index_+1].pose.position.x - path_[current_index_].pose.position.x;
         double delta_y = path_[current_index_+1].pose.position.y - path_[current_index_].pose.position.y;
@@ -276,6 +283,7 @@ private:
     rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr error_publisher_;
     rclcpp::TimerBase::SharedPtr timer_;
     std::vector<geometry_msgs::msg::PoseStamped> path_;
+    std::vector<geometry_msgs::msg::PoseStamped> path_1;
     geometry_msgs::msg::Pose current_pose_;
     //geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr last_pose_msg_;
     size_t current_index_;

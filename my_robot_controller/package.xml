@@ -15,6 +15,7 @@
   <depend>tkinter</depend>
   <depend>threading</depend>
   <depend>subprocess</depend>
+  <depend>tf2_ros</depend>
   
 
   <test_depend>ament_copyright</test_depend>

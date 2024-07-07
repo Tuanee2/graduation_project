@@ -20,15 +20,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            "test_node = my_robot_controller.my_first_node:main",
-            "draw_circle = my_robot_controller.draw_circle:main",
-            "pose_subcriber = my_robot_controller.pose_subcriber:main",
-            "turtle_controller = my_robot_controller.turtle_controller:main",
-            "read_lidar = my_robot_controller.read_lidar:main",
-            "controller = my_robot_controller.controller:main",
-            "test_GUI = my_robot_controller.test_GUI:main",
             "gui = my_robot_controller.gui:main",
-            "debug = my_robot_controller.debug:main",
             "error = my_robot_controller.error:main"
         ],
     },

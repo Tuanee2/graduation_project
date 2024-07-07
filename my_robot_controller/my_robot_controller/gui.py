@@ -185,24 +185,24 @@ class ROS2GUI(Node):
         self.button4_0.grid(row=4, column=0, padx=10, pady=10, sticky="nsew")
         self.button4_0.config(state="disabled")
 
-        self.path_name_entry = tk.Entry(self.root, width=25)
-        self.path_name_entry.grid(row=5, column=0, padx=10, pady=10, sticky="nsew")
-        self.add_placeholder_path("Enter path name here")
-        self.path_name_entry.config(state="disabled")
+        #self.path_name_entry = tk.Entry(self.root, width=25)
+        #self.path_name_entry.grid(row=5, column=0, padx=10, pady=10, sticky="nsew")
+        #self.add_placeholder_path("Enter path name here")
+        #self.path_name_entry.config(state="disabled")
 
-        self.button5_0 = tk.Button(self.root, text="Save path", bg="lightblue", width=30, height=2, command=self.button5_0_callback)
-        self.button5_0.grid(row=6, column=0, padx=10, pady=10, sticky="nsew")
-        self.button5_0.config(state="disabled")
+        #self.button5_0 = tk.Button(self.root, text="Save path", bg="lightblue", width=30, height=2, command=self.button5_0_callback)
+        #self.button5_0.grid(row=6, column=0, padx=10, pady=10, sticky="nsew")
+        #self.button5_0.config(state="disabled")
 
-        self.path_history_button = tk.Menubutton(self.root, text="Path History", relief="raised", bg="lightblue", width=25, height=2)
-        self.path_history_button.grid(row=6, column=1, padx=10, pady=10, sticky="nsew")
-        self.path_history_menu = tk.Menu(self.path_history_button, tearoff=0)
-        self.path_history_button.config(menu=self.path_history_menu)
-        self.update_path_history_menu()
-        self.path_history_button.config(state="disabled")
+        #self.path_history_button = tk.Menubutton(self.root, text="Path History", relief="raised", bg="lightblue", width=25, height=2)
+        #self.path_history_button.grid(row=6, column=1, padx=10, pady=10, sticky="nsew")
+        #self.path_history_menu = tk.Menu(self.path_history_button, tearoff=0)
+        #self.path_history_button.config(menu=self.path_history_menu)
+        #self.update_path_history_menu()
+        #self.path_history_button.config(state="disabled")
 
         self.button5_2 = tk.Button(self.root, text=self.text_data[13], bg="lightblue", width=30, height=2, command=self.shutdown_gui)
-        self.button5_2.grid(row=6, column=2, padx=10, pady=10, sticky="nsew")
+        self.button5_2.grid(row=5, column=0, padx=10, pady=10, sticky="nsew")
 
     def add_placeholder(self, placeholder_text):
         self.map_name_entry.insert(0, placeholder_text)
